@@ -10,7 +10,15 @@ class Github_Backup:
     username = ""
     token = ""
     token_path = 'tokens/github'
+    backup_path = 'backups/github'
     GITHUB_API = "https://api.github.com"
+
+    def __init__(self):
+        if not os.path.exists(os.path.dirname(self.token_path)):
+            os.makedirs(os.path.dirname(self.token_path))
+
+        if not os.path.exists(self.backup_path):
+            os.makedirs(self.backup_path)
 
     def get_token(self):
         print("Getting token...")
@@ -46,11 +54,16 @@ class Github_Backup:
 
         for repository in repositories:
             tag = self.get_current_tag(repository)
+            path = self.backup_path + "/" + repository + "-" + tag + ".zip"
 
-            print(repository + " -> " + tag)
+            print(repository + " (" + tag + ")", end="", flush=True)
 
-            #self.download(self.GITHUB_API + self.username + "/repository + "/archive/master.zip", repository + "-" + tag + ".zip")
-            return
+            if (os.path.isfile(path)):
+                print(" -> Up-to-date")
+            else:
+                print(" -> Downloading... ", end="", flush=True)
+                self.download("https://github.com/" + self.username + "/" + repository + "/archive/master.zip", path)
+                print(" Done.")
 
     def get_repositories(self):
         print("Getting repositories")
@@ -69,7 +82,6 @@ class Github_Backup:
         return tags[0]['name'] if len(tags) > 0 and 'name' in tags[0] else '1.0'
 
     def download_file(self, url, filename):
-        print("Download " + filename)
         with urllib.request.urlopen(url) as response, open(filename, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
 
@@ -86,7 +98,7 @@ class Github_Backup:
 
     def download(self, url, filename):
         passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-        passman.add_password(None, url, self.username, self.password)
+        passman.add_password(None, url, self.username, self.token)
         authhandler = urllib.request.HTTPBasicAuthHandler(passman)
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
