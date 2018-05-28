@@ -54,6 +54,10 @@ class Github_Backup:
 
         for repository in repositories:
             tag = self.get_current_tag(repository)
+            url = self.get_current_version(repository)
+            print(url)
+            continue
+
             path = self.backup_path + "/" + repository + "-" + tag + ".zip"
 
             print(repository + " (" + tag + ")", end="", flush=True)
@@ -75,6 +79,11 @@ class Github_Backup:
                 repositories.append(repository['name'])
 
         return repositories
+
+    def get_current_version(self, repository):
+        res = requests.get(self.GITHUB_API + "/repos/" + self.username + "/" + repository + "/tags", auth=(self.username,self.token)).json()
+
+        return res[0]['zipball_url'] if len(res) > 0 and 'zipball_url' in res[0] else "https://github.com/" + self.username + "/" + repository + "/archive/master.zip"
 
     def get_current_tag(self, repository):
         tags = requests.get(self.GITHUB_API + "/repos/" + self.username + "/" + repository + "/tags", auth=(self.username,self.token)).json()
