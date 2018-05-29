@@ -53,20 +53,17 @@ class Github_Backup:
         repositories = self.get_repositories()
 
         for repository in repositories:
-            tag = self.get_current_tag(repository)
-            url = self.get_current_version(repository)
-            print(url)
-            continue
+            version = self.get_current_version(repository)
 
-            path = self.backup_path + "/" + repository + "-" + tag + ".zip"
+            path = self.backup_path + "/" + repository['name'] + "-" + version['number'] + ".zip"
 
-            print(repository + " (" + tag + ")", end="", flush=True)
+            print(repository['name'] + " (" + version['number'] + ")", end="", flush=True)
 
             if (os.path.isfile(path)):
                 print(" -> Up-to-date")
             else:
                 print(" -> Downloading... ", end="", flush=True)
-                self.download("https://github.com/" + self.username + "/" + repository + "/archive/master.zip", path)
+                self.download(version['url'], path)
                 print(" Done.")
 
     def get_repositories(self):
@@ -76,17 +73,21 @@ class Github_Backup:
 
         if res.status_code == 200:
             for repository in res.json():
-                repositories.append(repository['name'])
+                repositories.append(repository)
 
         return repositories
 
     def get_current_version(self, repository):
-        res = requests.get(self.GITHUB_API + "/repos/" + self.username + "/" + repository + "/tags", auth=(self.username,self.token)).json()
+        res = requests.get(repository['tags_url'], auth=(self.username,self.token)).json()
 
-        return res[0]['zipball_url'] if len(res) > 0 and 'zipball_url' in res[0] else "https://github.com/" + self.username + "/" + repository + "/archive/master.zip"
+        version = res[0]['name'] if len(res) > 0 and 'name' in res[0] else '1.0'
+        url = res[0]['zipball_url'] if len(res) > 0 and 'zipball_url' in res[0] else "https://github.com/" + self.username + "/" + repository['name'] + "/archive/master.zip"
+
+        return {'number': version, 'url': url}
 
     def get_current_tag(self, repository):
-        tags = requests.get(self.GITHUB_API + "/repos/" + self.username + "/" + repository + "/tags", auth=(self.username,self.token)).json()
+        #tags = requests.get(self.GITHUB_API + "/repos/" + self.username + "/" + repository + "/tags", auth=(self.username,self.token)).json()
+        tags = requests.get(repository['tags_url'], auth=(self.username, self.token)).json()
 
         return tags[0]['name'] if len(tags) > 0 and 'name' in tags[0] else '1.0'
 
