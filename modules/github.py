@@ -31,10 +31,10 @@ class Github_Backup:
             return json.load(f)
 
     def config_get(self, key, default=""):
-        return self.config[module][key] if key in self.config[module] and self.config[module][key] != "" else default
+        return self.config[self.module][key] if key in self.config[self.module] and self.config[self.module][key] != "" else default
 
     def config_set(self, key, value):
-        self.config[module][key] = value
+        self.config[self.module][key] = value
         self.write_config()
 
     def write_config(self):
