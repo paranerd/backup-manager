@@ -17,14 +17,18 @@ class Github_Backup:
 
     def __init__(self):
         self.config = self.read_config()
+        self.backup_path = self.get_backup_path()
 
-        self.backup_path = self.config_get('backup_path', 'backups/github')
+    def get_backup_path(self):
+        backup_path = self.config_get('backup_path', 'backups/github')
 
-        if not self.backup_path.startswith("/"):
-            self.backup_path = self.project_path + "/" + self.backup_path
+        if not backup_path.startswith("/"):
+            backup_path = self.project_path + "/" + backup_path
 
-        if not os.path.exists(self.backup_path):
-            os.makedirs(self.backup_path)
+        if not os.path.exists(backup_path):
+            os.makedirs(backup_path)
+
+        return backup_path
 
     def read_config(self):
         with open(self.project_path + '/config.json', 'r') as f:
