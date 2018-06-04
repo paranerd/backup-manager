@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import requests
+import webbrowser
 import urllib3
 from urllib.parse import urlencode, quote_plus
 
@@ -31,7 +32,7 @@ class Google_Drive_Backup():
             self.request_code()
 
     def get_backup_path(self):
-        backup_path = self.config_get('backup_path', 'backups/github')
+        backup_path = self.config_get('backup_path', self.backup_path)
 
         if not backup_path.startswith("/"):
             backup_path = self.project_path + "/" + backup_path
@@ -51,7 +52,9 @@ class Google_Drive_Backup():
         # Build auth uri
         auth_uri = self.credentials['auth_uri'] + "?response_type=code" + "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0]) + "&client_id=" + quote_plus(self.credentials['client_id']) + "&scope=" + quote_plus(self.SCOPES) + "&access_type=" + quote_plus(self.ACCESS) + "&approval_prompt=auto"
 
-        print("Visit:")
+        webbrowser.open(auth_uri, new=2)
+
+        print("If your browser does not open, go to this website:")
         print(auth_uri)
         print("")
 
