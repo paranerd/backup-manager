@@ -44,6 +44,7 @@ class Google_Drive_Backup():
 
     def request_credentials(self):
         credentials_str = input('Paste credentials: ')
+        print("")
         self.credentials = json.loads(credentials_str)['installed']
 
         self.config_set('credentials', self.credentials)
@@ -68,7 +69,6 @@ class Google_Drive_Backup():
 
     def config_get(self, key, default=""):
         if not self.module in self.config:
-            print("adding")
             self.config[self.module] = {}
             self.write_config()
 
@@ -138,31 +138,52 @@ class Google_Drive_Backup():
         else:
             raise Exception("Error getting token: " + str(res['body']))
 
-    def children(self, id='root', parents=[]):
-        print(parents)
+    def children(self, id='root', parents=[], pageToken=""):
+        if len(parents) > 0:
+            print(parents[-1])
+        else:
+            print("root")
 
-        res = self.execute_request(self.GOOGLE_API + "?q='" + id + "'+in+parents&fields=files(id%2Cname%2Cmd5Checksum%2CmimeType)")
+        params = {
+            "q": "'" + id + "' in parents",
+            "fields": "nextPageToken,files(id,name,md5Checksum,mimeType)",
+            "pageSize": "100"
+        }
+
+        if pageToken:
+            params['pageToken'] = pageToken
+
+        # Build param-string
+        params_str = ""
+
+        for key, param in params.items():
+            params_str = params_str + key + "=" + param + "&"
+
+        params_str = params_str[:-1].replace(",", "%2C").replace(" ", "+")
+
+        # Send request
+        res = self.execute_request(self.GOOGLE_API + "?" + params_str)
+
         items = res['body']['files']
         offset = ' ' * 4 * len(parents)
 
         for item in items:
-            path = "/" + ("/".join(parents) + "/" + item['name']).strip("/")
-            print(path)
+            path = self.backup_path + "/" + ("/".join(parents) + "/" + item['name']).strip("/")
 
             if item['mimeType'] == 'application/vnd.google-apps.folder':
-                print('{0}{1} | {2}'.format(offset, item['id'], item['name']))
                 self.children(item['id'], parents + [item['name']])
             else:
                 checksum_server = item['md5Checksum'] if 'md5Checksum' in item else ''
-                checksum_local = util.md5_file(self.backup_path + path)
-
-                print(checksum_server + " | " + checksum_local)
+                checksum_local = util.md5_file(path)
 
                 if not checksum_server or checksum_server != checksum_local:
-                    self.download_urllib3(item['id'], path)
-                #print('{0}{1} | {2} -> {3}'.format(offset, item['id'], item['name'], checksum))
+                    print("Downloading " + path.replace(self.backup_path + "/", ""))
+                    self.download(item['id'], path)
 
-    def download_urllib3(self, id, path):
+        if 'nextPageToken' in res['body']:
+            self.children(id, parents, res['body']['nextPageToken'])
+
+    def download(self, id, path):
         util.create_folder(os.path.dirname(path))
 
         http = urllib3.PoolManager()
@@ -176,20 +197,6 @@ class Google_Drive_Backup():
                 out.write(data)
 
         r.release_conn()
-
-    def download(self, id, path):
-        print("download " + id)
-
-        r = requests.get('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', headers={'Authorization': 'Bearer {}'.format(self.token['access_token'])})
-
-        if r.status_code == 200:
-            print("status 200")
-            with open(path, 'wb') as f:
-                r.raw.decode_content = True
-                shutil.copyfileobj(r.raw, f)
-        else:
-            print("status: " + str(r.status_code))
-            print(r.json())
 
 gd = Google_Drive_Backup()
 gd.children()

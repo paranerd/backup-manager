@@ -14,13 +14,14 @@ class Github_Backup:
     config = {}
     project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     module = 'github'
+    backup_path = 'backups/github'
 
     def __init__(self):
         self.config = self.read_config()
         self.backup_path = self.get_backup_path()
 
     def get_backup_path(self):
-        backup_path = self.config_get('backup_path', 'backups/github')
+        backup_path = self.config_get('backup_path', self.backup_path)
 
         if not backup_path.startswith("/"):
             backup_path = self.project_path + "/" + backup_path
@@ -90,7 +91,6 @@ class Github_Backup:
     def get_repositories(self):
         repositories = []
         res = requests.get(self.GITHUB_API + "/users/" + self.username + "/repos", auth=(self.username,self.token))
-        print(res)
 
         if res.status_code == 200:
             for repository in res.json():

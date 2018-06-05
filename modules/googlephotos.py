@@ -16,7 +16,6 @@ class Google_Photos_Backup():
     backup_path = "backups/photos"
     module = 'googlephotos'
     config = {}
-    try_count = 0
 
     def __init__(self):
         self.config = self.read_config()
@@ -43,6 +42,7 @@ class Google_Photos_Backup():
 
     def request_credentials(self):
         credentials_str = input('Paste credentials: ')
+        print("")
         self.credentials = json.loads(credentials_str)['installed']
 
         self.config_set('credentials', self.credentials)
@@ -67,7 +67,6 @@ class Google_Photos_Backup():
 
     def config_get(self, key, default=""):
         if not self.module in self.config:
-            print("adding")
             self.config[self.module] = {}
             self.write_config()
 
@@ -128,19 +127,20 @@ class Google_Photos_Backup():
         if 'mediaItems' in res['body']:
             items = res['body']['mediaItems']
 
+            result = re.match('([0-9]{4})-', name)
+
+            year = result.group(1) if result else '0000'
+
             for item in items:
                 width = item['mediaMetadata']['width']
                 height = item['mediaMetadata']['height']
 
                 extension = item['mimeType'].split("/",1)[1]
-                path = self.backup_path + "/" + name + "/" + re.sub("[^0-9]", "", item['mediaMetadata']['creationTime']) + "." + extension
+                filename = re.sub("[^0-9]", "", item['mediaMetadata']['creationTime'])
+                path = self.backup_path + "/" + year + "/" + name + "/" + filename[:8] + "_" + filename[8:] + "." + extension
 
-                print("    " + os.path.basename(path), end="", flush=True)
-
-                if os.path.exists(path):
-                    print(" -> Up-to-date")
-                else:
-                    print(" -> Downloading")
+                if not os.path.exists(path):
+                    print("    Downloading " + path.replace(self.backup_path + "/", ""))
                     self.download(item['baseUrl'] + "=w" + width + "-h" + height, path)
 
         if 'nextPageToken' in res['body']:
