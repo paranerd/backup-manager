@@ -14,14 +14,14 @@ class Github_Backup:
     config = {}
     project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     module = 'github'
-    backup_path = 'backups/github'
+    backup_path = ''
 
     def __init__(self):
         self.config = self.read_config()
         self.backup_path = self.get_backup_path()
 
     def get_backup_path(self):
-        backup_path = self.config_get('backup_path', self.backup_path)
+        backup_path = self.config_get('backup_path', 'backups/' + self.module)
 
         if not backup_path.startswith("/"):
             backup_path = self.project_path + "/" + backup_path
@@ -36,6 +36,10 @@ class Github_Backup:
             return json.load(f)
 
     def config_get(self, key, default=""):
+        if not self.module in self.config:
+            self.config[self.module] = {}
+            self.write_config()
+
         return self.config[self.module][key] if key in self.config[self.module] and self.config[self.module][key] != "" else default
 
     def config_set(self, key, value):
@@ -115,17 +119,6 @@ class Github_Backup:
         with urllib.request.urlopen(url) as response, open(filename, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
 
-    def get(self):
-        try:
-            res = urllib.request.urlopen(self.GITHUB_API + "/users/" + self.username + "/repos").read()
-            repositories = json.loads(res.decode("utf-8") )
-
-            for repository in repositories:
-                print(repository['name'])
-
-        except urllib.error.HTTPError as e:
-            print(e.code)
-
     def download(self, url, filename):
         passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, url, self.username, self.token)
@@ -137,5 +130,6 @@ class Github_Backup:
             data = response.read()
             out_file.write(data)
 
-g = Github_Backup()
-g.backup()
+if __name__ == "__main__":
+    g = Github_Backup()
+    g.backup()

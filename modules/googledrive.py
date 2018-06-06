@@ -6,7 +6,7 @@ import webbrowser
 import urllib3
 from urllib.parse import urlencode, quote_plus
 
-import util
+from . import util
 
 class Google_Drive_Backup():
     GOOGLE_API = "https://www.googleapis.com/drive/v3/files"
@@ -25,14 +25,8 @@ class Google_Drive_Backup():
         self.token = self.config_get('token')
         self.backup_path = self.get_backup_path()
 
-        if not self.credentials:
-            self.request_credentials()
-
-        if not self.token:
-            self.request_code()
-
     def get_backup_path(self):
-        backup_path = self.config_get('backup_path', self.backup_path)
+        backup_path = self.config_get('backup_path', 'backups/' + self.module)
 
         if not backup_path.startswith("/"):
             backup_path = self.project_path + "/" + backup_path
@@ -138,7 +132,16 @@ class Google_Drive_Backup():
         else:
             raise Exception("Error getting token: " + str(res['body']))
 
-    def children(self, id='root', parents=[], pageToken=""):
+    def backup(self):
+        if not self.credentials:
+            self.request_credentials()
+
+        if not self.token:
+            self.request_code()
+
+        self.get_children()
+
+    def get_children(self, id='root', parents=[], pageToken=""):
         if len(parents) > 0:
             print(parents[-1])
         else:
@@ -198,5 +201,6 @@ class Google_Drive_Backup():
 
         r.release_conn()
 
-gd = Google_Drive_Backup()
-gd.children()
+if __name__ == "__main__":
+    gd = Google_Drive_Backup()
+    gd.backup()

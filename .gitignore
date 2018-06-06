@@ -1,3 +1,4 @@
 tokens/
 backups/
 config.json
+__pycache__/

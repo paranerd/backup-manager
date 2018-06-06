@@ -13,7 +13,7 @@ class Google_Photos_Backup():
     credentials = ''
     token = ''
     project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    backup_path = "backups/photos"
+    backup_path = ''
     module = 'googlephotos'
     config = {}
 
@@ -23,14 +23,8 @@ class Google_Photos_Backup():
         self.token = self.config_get('token')
         self.backup_path = self.get_backup_path()
 
-        if not self.credentials:
-            self.request_credentials()
-
-        if not self.token:
-            self.request_code()
-
     def get_backup_path(self):
-        backup_path = self.config_get('backup_path', self.backup_path)
+        backup_path = self.config_get('backup_path', 'backups/' + self.module)
 
         if not backup_path.startswith("/"):
             backup_path = self.project_path + "/" + backup_path
@@ -104,14 +98,23 @@ class Google_Photos_Backup():
 
         return {'status': res.status_code, 'body': res.json()}
 
-    def get_albums(self):
-        res = self.execute_request(self.GOOGLE_API + "/albums")
+    def backup(self):
+        if not self.credentials:
+            self.request_credentials()
 
-        albums = res['body']['albums']
+        if not self.token:
+            self.request_code()
+
+        albums = self.get_albums()
 
         for album in albums:
             print(album['title'])
             self.get_album_contents(album['id'], album['title'])
+
+    def get_albums(self):
+        res = self.execute_request(self.GOOGLE_API + "/albums")
+
+        return res['body']['albums']
 
     def get_album_contents(self, id, name, pageToken=""):
         params = {
@@ -204,5 +207,6 @@ class Google_Photos_Backup():
         else:
             raise Exception("Error getting token: " + str(res['body']))
 
-gp = Google_Photos_Backup()
-gp.get_albums()
+if __name__ == "__main__":
+    gp = Google_Photos_Backup()
+    gp.backup()
