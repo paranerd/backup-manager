@@ -230,6 +230,9 @@ class Google_Photos_Backup():
         res = self.execute_request(self.credentials['token_uri'], headers, params, "POST")
 
         if res['status'] == 200:
+            if self.token:
+                res['body']['refresh_token'] = self.token['refresh_token']
+
             self.config_set('token', res['body'])
             return res['body']
         else:
