@@ -1,6 +1,8 @@
 import requests
 import getpass
 import urllib.request
+from urllib.parse import urlencode, quote_plus
+import urllib3
 import shutil
 import base64
 import json
@@ -63,10 +65,11 @@ class Github_Backup:
 
     def backup(self):
         print("")
-        print("### Backup Google Photos ###")
+        print("### Backup Github ###")
         print("")
 
         try:
+            print("/")
             self.username = self.config_get('username')
             self.token = self.config_get('token')
 
@@ -83,16 +86,8 @@ class Github_Backup:
             for repository in repositories:
                 version = self.get_current_version(repository)
 
-                path = self.backup_path + "/" + repository['name'] + "-" + version['number'] + ".zip"
+                self.download(version['url'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
 
-                print(repository['name'] + " (" + version['number'] + ")", end="", flush=True)
-
-                if (os.path.isfile(path)):
-                    print(" -> Up-to-date")
-                else:
-                    print(" -> Downloading... ", end="", flush=True)
-                    self.download(version['url'], path)
-                    print(" Done.")
         except Exception as e:
             print(e)
 
@@ -119,18 +114,19 @@ class Github_Backup:
 
         return tags[0]['name'] if len(tags) > 0 and 'name' in tags[0] else '1.0'
 
-    def download_file(self, url, filename):
-        with urllib.request.urlopen(url) as response, open(filename, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
+    def download(self, url, path, filename, check_if_exists=False):
+        if os.path.isfile(os.path.join(path, filename)):
+            return
 
-    def download(self, url, filename):
         passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, url, self.username, self.token)
         authhandler = urllib.request.HTTPBasicAuthHandler(passman)
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
 
-        with urllib.request.urlopen(url) as response, open(filename, 'wb') as out_file:
+        print("    " + os.path.basename(filename))
+
+        with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
             data = response.read()
             out_file.write(data)
 

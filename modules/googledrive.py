@@ -1,6 +1,6 @@
 import os
+import re
 import json
-import shutil
 import requests
 import webbrowser
 import urllib3
@@ -21,7 +21,7 @@ class Google_Drive_Backup():
 
     def __init__(self):
         self.config = self.read_config()
-        self.credentials = self.config_get('credentials')
+        self.credentials = self.config_get('credentials', None)
         self.token = self.config_get('token')
         self.backup_path = self.get_backup_path()
 
@@ -146,10 +146,8 @@ class Google_Drive_Backup():
         self.get_children()
 
     def get_children(self, id='root', parents=[], pageToken=""):
-        if len(parents) > 0:
-            print(parents[-1])
-        else:
-            print("root")
+        path = self.backup_path + "/" + "/".join(parents).strip("/")
+        print("/" + ("/".join(parents)))
 
         params = {
             "q": "'" + id + "' in parents",
@@ -172,38 +170,70 @@ class Google_Drive_Backup():
         res = self.execute_request(self.GOOGLE_API + "?" + params_str)
 
         items = res['body']['files']
-        offset = ' ' * 4 * len(parents)
 
         for item in items:
-            path = self.backup_path + "/" + ("/".join(parents) + "/" + item['name']).strip("/")
-
+            # Folders
             if item['mimeType'] == 'application/vnd.google-apps.folder':
                 self.get_children(item['id'], parents + [item['name']])
+            # Google Docs
+            elif item['mimeType'] == 'application/vnd.google-apps.document':
+                url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/pdf"
+                self.download(url, path, item['name'] + ".pdf", True)
+            # Google Spreadsheets
+            elif item['mimeType'] == 'application/vnd.google-apps.spreadsheet':
+                url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                self.download(url, path, item['name'] + ".xlsx", True)
+            # Regular files
             else:
                 checksum_server = item['md5Checksum'] if 'md5Checksum' in item else ''
                 checksum_local = util.md5_file(path)
 
                 if not checksum_server or checksum_server != checksum_local:
-                    print("    Downloading " + path.replace(self.backup_path + "/", ""))
-                    self.download(item['id'], path)
+                    url = self.GOOGLE_API + "/" + item['id'] + '?alt=media'
+                    self.download(url, path, item['name'], False)
 
         if 'nextPageToken' in res['body']:
             self.get_children(id, parents, res['body']['nextPageToken'])
 
-    def download(self, id, path):
-        util.create_folder(os.path.dirname(path))
+    def download(self, url, path, filename="", check_if_exists=False):
+        # Create folder if not exists
+        if not os.path.exists(path):
+            os.makedirs(path)
 
+        headers = {
+            'Authorization': 'Bearer {}'.format(self.token['access_token'])
+        }
+
+        # Check if file already exists
+        if check_if_exists:
+            res = requests.head(url, headers=headers)
+
+            if res.status_code != 200:
+                raise Exception("Error getting file info")
+
+            filename = filename if filename else re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
+
+            if os.path.isfile(os.path.join(path, filename)):
+                return
+
+        # Download file
         http = urllib3.PoolManager()
-        r = http.request('GET', 'https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', headers={'Authorization': 'Bearer {}'.format(self.token['access_token'])}, preload_content=False)
+        r = http.request('GET', url, headers=headers, preload_content=False)
 
-        with open(path, 'wb') as out:
-            while True:
-                data = r.read(128)
-                if not data:
-                    break
-                out.write(data)
+        if r.status == 200:
+            filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
+            print("    " + filename)
 
-        r.release_conn()
+            with open(os.path.join(path, filename), 'wb') as out:
+                while True:
+                    data = r.read(128)
+                    if not data:
+                        break
+                    out.write(data)
+
+            r.release_conn()
+        else:
+            raise Exception("Error downloading")
 
 if __name__ == "__main__":
     gd = Google_Drive_Backup()
