@@ -62,6 +62,10 @@ class Github_Backup:
         raise Exception("Error obtaining token: " + str(res.json()))
 
     def backup(self):
+        print("")
+        print("### Backup Google Photos ###")
+        print("")
+
         try:
             self.username = self.config_get('username')
             self.token = self.config_get('token')

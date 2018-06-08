@@ -99,6 +99,10 @@ class Google_Photos_Backup():
         return {'status': res.status_code, 'body': res.json()}
 
     def backup(self):
+        print("")
+        print("### Backup Google Photos ###")
+        print("")
+
         if not self.credentials:
             self.request_credentials()
 
@@ -141,6 +145,8 @@ class Google_Photos_Backup():
                 extension = item['mimeType'].split("/",1)[1]
                 filename = re.sub("[^0-9]", "", item['mediaMetadata']['creationTime'])
                 path = self.backup_path + "/" + year + "/" + name + "/" + filename[:8] + "_" + filename[8:] + "." + extension
+                self.download(item['baseUrl'] + "=w" + width + "-h" + height, os.path.dirname(path), True)
+                continue
 
                 if not os.path.exists(path):
                     print("    Downloading " + path.replace(self.backup_path + "/", ""))
@@ -149,25 +155,45 @@ class Google_Photos_Backup():
         if 'nextPageToken' in res['body']:
             self.get_album_contents(id, name, res['body']['nextPageToken'])
 
-    def download(self, url, path):
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
+    def download(self, url, path, check_if_exists=False):
+        # Create folder if not exists
+        if not os.path.exists(path):
+            os.makedirs(path)
 
         headers = {
             'Authorization': 'Bearer {}'.format(self.token['access_token'])
         }
 
+        # Check if file already exists
+        if check_if_exists:
+            res = requests.head(url, headers=headers)
+
+            if res.status_code != 200:
+                raise Exception("Error getting file info")
+
+            filename = re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
+
+            if os.path.isfile(os.path.join(path, filename)):
+                return
+
+        # Download file
         http = urllib3.PoolManager()
         r = http.request('GET', url, headers=headers, preload_content=False)
 
-        with open(path, 'wb') as out:
-            while True:
-                data = r.read(128)
-                if not data:
-                    break
-                out.write(data)
+        if r.status == 200:
+            filename = re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
+            print("    Downloading " + filename)
 
-        r.release_conn()
+            with open(os.path.join(path, filename), 'wb') as out:
+                while True:
+                    data = r.read(128)
+                    if not data:
+                        break
+                    out.write(data)
+
+            r.release_conn()
+        else:
+            raise Exception("Error downloading")
 
     def create_album(self, name):
         params = {

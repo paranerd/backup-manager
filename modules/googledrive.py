@@ -133,6 +133,10 @@ class Google_Drive_Backup():
             raise Exception("Error getting token: " + str(res['body']))
 
     def backup(self):
+        print("")
+        print("### Backup Google Drive ###")
+        print("")
+
         if not self.credentials:
             self.request_credentials()
 
@@ -174,17 +178,17 @@ class Google_Drive_Backup():
             path = self.backup_path + "/" + ("/".join(parents) + "/" + item['name']).strip("/")
 
             if item['mimeType'] == 'application/vnd.google-apps.folder':
-                self.children(item['id'], parents + [item['name']])
+                self.get_children(item['id'], parents + [item['name']])
             else:
                 checksum_server = item['md5Checksum'] if 'md5Checksum' in item else ''
                 checksum_local = util.md5_file(path)
 
                 if not checksum_server or checksum_server != checksum_local:
-                    print("Downloading " + path.replace(self.backup_path + "/", ""))
+                    print("    Downloading " + path.replace(self.backup_path + "/", ""))
                     self.download(item['id'], path)
 
         if 'nextPageToken' in res['body']:
-            self.children(id, parents, res['body']['nextPageToken'])
+            self.get_children(id, parents, res['body']['nextPageToken'])
 
     def download(self, id, path):
         util.create_folder(os.path.dirname(path))
