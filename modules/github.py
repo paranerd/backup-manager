@@ -7,6 +7,7 @@ import shutil
 import base64
 import json
 import os
+import re
 
 class Github_Backup:
     username = ""
@@ -54,7 +55,7 @@ class Github_Backup:
 
     def get_token(self):
         print("Getting token...")
-        password = getpass.getpass('Github password: ')
+        password = getpass.getpass('Github password (' + self.username + '): ')
 
         res = requests.post(self.GITHUB_API + "/authorizations", auth = (self.username, password), data = json.dumps({'note': 'backup', 'note_url': 'backup_my_accounts'}))
 
@@ -69,7 +70,6 @@ class Github_Backup:
         print("")
 
         try:
-            print("/")
             self.username = self.config_get('username')
             self.token = self.config_get('token')
 
@@ -81,12 +81,14 @@ class Github_Backup:
                 self.token = self.get_token()
                 self.config_set('token', self.token)
 
+            print("/")
+
             repositories = self.get_repositories()
 
             for repository in repositories:
                 version = self.get_current_version(repository)
 
-                self.download(version['url'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
+                self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
 
         except Exception as e:
             print(e)
@@ -114,9 +116,18 @@ class Github_Backup:
 
         return tags[0]['name'] if len(tags) > 0 and 'name' in tags[0] else '1.0'
 
-    def download(self, url, path, filename, check_if_exists=False):
-        if os.path.isfile(os.path.join(path, filename)):
+    def delete_older_versions(self, path, repo_name):
+        for f in os.listdir(path):
+            if re.search('^' + repo_name + '-[0-9.]+zip', f):
+                os.remove(os.path.join(self.backup_path, f))
+
+    def download(self, url, repo_name, path, filename, check_if_exists=False):
+        # Check if file exists
+        if check_if_exists and os.path.isfile(os.path.join(path, filename)):
             return
+
+        # Delete older version
+        self.delete_older_versions(path, repo_name)
 
         passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, url, self.username, self.token)
