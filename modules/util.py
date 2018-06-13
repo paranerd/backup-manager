@@ -37,3 +37,11 @@ def get_timestamp(format=False):
         return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     else:
         return int(round(time.time() * 1000))
+
+def log(msg):
+    msg = get_timestamp(True) + " | " + msg
+
+    print(msg)
+
+    with open("backup.log", "a") as log:
+        log.write(msg + "\n")

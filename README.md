@@ -21,6 +21,7 @@ sudo apt install python3, python3-urllib3
 - Setting a backup path
 
     By default, files will be backed up to the backups/-folder within the project's root
+
     You can change this location by modifying the config.json as follows:
 
     ```python
@@ -40,7 +41,7 @@ sudo apt install python3, python3-urllib3
 5. Download the generated credentials json
 6. When prompted by the script, paste the content of that json
 
-## Functioning
+## How it works
 1. Github
     - Goes through all your repositories and backs up the latest release
     - Saves each repository as [repository_name]-[tag].zip (e.g. my-project-1.0.zip)

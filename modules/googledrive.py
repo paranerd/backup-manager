@@ -38,7 +38,7 @@ class Google_Drive_Backup():
 
     def request_credentials(self):
         credentials_str = input('Paste credentials: ')
-        print("")
+        util.log("")
         self.credentials = json.loads(credentials_str)['installed']
 
         self.config_set('credentials', self.credentials)
@@ -49,9 +49,9 @@ class Google_Drive_Backup():
 
         webbrowser.open(auth_uri, new=2)
 
-        print("If your browser does not open, go to this website:")
-        print(auth_uri)
-        print("")
+        util.log("If your browser does not open, go to this website:")
+        util.log(auth_uri)
+        util.log("")
 
         code = input('Enter code: ')
 
@@ -136,9 +136,9 @@ class Google_Drive_Backup():
             raise Exception("Error getting token: " + str(res['body']))
 
     def backup(self):
-        print("")
-        print("### Backup Google Drive ###")
-        print("")
+        util.log("")
+        util.log("### Backup Google Drive ###")
+        util.log("")
 
         if not self.credentials:
             self.request_credentials()
@@ -150,7 +150,7 @@ class Google_Drive_Backup():
 
     def get_children(self, id='root', parents=[], pageToken=""):
         path = self.backup_path + "/" + "/".join(parents).strip("/")
-        print("/" + ("/".join(parents)))
+        util.log("/" + ("/".join(parents)))
 
         params = {
             "q": "'" + id + "' in parents",
@@ -225,7 +225,7 @@ class Google_Drive_Backup():
 
         if r.status == 200:
             filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
-            print("    " + filename)
+            util.log("    " + filename)
 
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:

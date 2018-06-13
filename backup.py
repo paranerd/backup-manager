@@ -15,6 +15,6 @@ git = Github_Backup()
 gd = Google_Drive_Backup()
 gp = Google_Photos_Backup()
 
-git.backup()
+#git.backup()
 gd.backup()
 gp.backup()

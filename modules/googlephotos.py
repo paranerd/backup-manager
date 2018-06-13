@@ -38,7 +38,7 @@ class Google_Photos_Backup():
 
     def request_credentials(self):
         credentials_str = input('Paste credentials: ')
-        print("")
+        util.log("")
         self.credentials = json.loads(credentials_str)['installed']
 
         self.config_set('credentials', self.credentials)
@@ -49,9 +49,9 @@ class Google_Photos_Backup():
 
         webbrowser.open(auth_uri, new=2)
 
-        print("If your browser does not open, go to this website:")
-        print(auth_uri)
-        print("")
+        util.log("If your browser does not open, go to this website:")
+        util.log(auth_uri)
+        util.log("")
 
         code = input('Enter code: ')
 
@@ -101,9 +101,9 @@ class Google_Photos_Backup():
         return {'status': res.status_code, 'body': res.json()}
 
     def backup(self):
-        print("")
-        print("### Backup Google Photos ###")
-        print("")
+        util.log("")
+        util.log("### Backup Google Photos ###")
+        util.log("")
 
         if not self.credentials:
             self.request_credentials()
@@ -114,7 +114,7 @@ class Google_Photos_Backup():
         albums = self.get_albums()
 
         for album in albums:
-            print(album['title'])
+            util.log(album['title'])
             self.get_album_contents(album['id'], album['title'])
 
     def get_albums(self):
@@ -151,7 +151,7 @@ class Google_Photos_Backup():
                 continue
 
                 if not os.path.exists(path):
-                    print("    Downloading " + path.replace(self.backup_path + "/", ""))
+                    util.log("    Downloading " + path.replace(self.backup_path + "/", ""))
                     self.download(item['baseUrl'] + "=w" + width + "-h" + height, path)
 
         if 'nextPageToken' in res['body']:
@@ -184,7 +184,7 @@ class Google_Photos_Backup():
 
         if r.status == 200:
             filename = re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
-            print("    Downloading " + filename)
+            util.log("    " + filename)
 
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:

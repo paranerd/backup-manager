@@ -9,6 +9,8 @@ import json
 import os
 import re
 
+from . import util
+
 class Github_Backup:
     username = ""
     token = ""
@@ -54,7 +56,7 @@ class Github_Backup:
             f.write(json.dumps(self.config, indent=4))
 
     def get_token(self):
-        print("Getting token...")
+        util.log("Getting token...")
         password = getpass.getpass('Github password (' + self.username + '): ')
 
         res = requests.post(self.GITHUB_API + "/authorizations", auth = (self.username, password), data = json.dumps({'note': 'backup', 'note_url': 'backup_my_accounts'}))
@@ -65,9 +67,9 @@ class Github_Backup:
         raise Exception("Error obtaining token: " + str(res.json()))
 
     def backup(self):
-        print("")
-        print("### Backup Github ###")
-        print("")
+        util.log("")
+        util.log("### Backup Github ###")
+        util.log("")
 
         try:
             self.username = self.config_get('username')
@@ -81,7 +83,7 @@ class Github_Backup:
                 self.token = self.get_token()
                 self.config_set('token', self.token)
 
-            print("/")
+            util.log("/")
 
             repositories = self.get_repositories()
 
@@ -91,7 +93,7 @@ class Github_Backup:
                 self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
 
         except Exception as e:
-            print(e)
+            util.log(e)
 
     def get_repositories(self):
         repositories = []
@@ -135,7 +137,7 @@ class Github_Backup:
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
 
-        print("    " + os.path.basename(filename))
+        util.log("    " + os.path.basename(filename))
 
         with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
             data = response.read()
