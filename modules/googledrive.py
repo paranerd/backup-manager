@@ -181,11 +181,11 @@ class Google_Drive_Backup():
             # Google Docs
             elif item['mimeType'] == 'application/vnd.google-apps.document':
                 url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/pdf"
-                self.download(url, path, item['name'] + ".pdf", True)
+                self.download(url, path, item['name'] + ".pdf", False)
             # Google Spreadsheets
             elif item['mimeType'] == 'application/vnd.google-apps.spreadsheet':
                 url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                self.download(url, path, item['name'] + ".xlsx", True)
+                self.download(url, path, item['name'] + ".xlsx", False)
             # Regular files
             else:
                 checksum_server = item['md5Checksum'] if 'md5Checksum' in item else ''

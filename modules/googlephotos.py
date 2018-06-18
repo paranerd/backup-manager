@@ -18,12 +18,27 @@ class Google_Photos_Backup():
     backup_path = ''
     module = 'googlephotos'
     config = {}
+    cache = {}
 
     def __init__(self):
         self.config = self.read_config()
         self.credentials = self.config_get('credentials', None)
         self.token = self.config_get('token')
         self.backup_path = self.get_backup_path()
+        self.cache = self.get_cache()
+
+    def get_cache(self):
+        if not os.path.exists('googlephotos_cache.json'):
+            return {}
+
+        with open('googlephotos_cache.json', 'r') as f:
+            return json.load(f)
+
+    def write_cache(self):
+        #if not os.path.exists('googlephotos_cache.json'):
+
+        with open('googlephotos_cache.json', 'w') as f:
+            f.write(json.dumps(self.cache, indent=4))
 
     def get_backup_path(self):
         backup_path = self.config_get('backup_path', 'backups/' + self.module)
@@ -117,6 +132,8 @@ class Google_Photos_Backup():
             util.log(album['title'])
             self.get_album_contents(album['id'], album['title'])
 
+        self.write_cache()
+
     def get_albums(self):
         res = self.execute_request(self.GOOGLE_API + "/albums")
 
@@ -144,20 +161,15 @@ class Google_Photos_Backup():
                 width = item['mediaMetadata']['width']
                 height = item['mediaMetadata']['height']
 
-                extension = item['mimeType'].split("/",1)[1]
-                filename = re.sub("[^0-9]", "", item['mediaMetadata']['creationTime'])
-                path = self.backup_path + "/" + year + "/" + name + "/" + filename[:8] + "_" + filename[8:] + "." + extension
-                self.download(item['baseUrl'] + "=w" + width + "-h" + height, os.path.dirname(path), True)
-                continue
+                path = self.backup_path + "/" + year + "/" + name
+                filename = self.cache[item['id']] if item['id'] in self.cache else ''
 
-                if not os.path.exists(path):
-                    util.log("    Downloading " + path.replace(self.backup_path + "/", ""))
-                    self.download(item['baseUrl'] + "=w" + width + "-h" + height, path)
+                self.download(item['baseUrl'] + "=w" + width + "-h" + height, item['id'], path, filename, True)
 
         if 'nextPageToken' in res['body']:
             self.get_album_contents(id, name, res['body']['nextPageToken'])
 
-    def download(self, url, path, check_if_exists=False):
+    def download(self, url, id, path, filename="", check_if_exists=False):
         # Create folder if not exists
         if not os.path.exists(path):
             os.makedirs(path)
@@ -168,22 +180,27 @@ class Google_Photos_Backup():
 
         # Check if file already exists
         if check_if_exists:
-            res = requests.head(url, headers=headers)
+            if filename:
+                if os.path.isfile(os.path.join(path, filename)):
+                    return
+            else:
+                res = requests.head(url, headers=headers)
 
-            if res.status_code != 200:
-                raise Exception("Error getting file info")
+                if res.status_code != 200:
+                    raise Exception("Error getting file info")
 
-            filename = re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
+                filename = re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
 
-            if os.path.isfile(os.path.join(path, filename)):
-                return
+                if os.path.isfile(os.path.join(path, filename)):
+                    return
 
         # Download file
         http = urllib3.PoolManager()
         r = http.request('GET', url, headers=headers, preload_content=False)
 
         if r.status == 200:
-            filename = re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
+            filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
+            self.cache[id] = filename
             util.log("    " + filename)
 
             with open(os.path.join(path, filename), 'wb') as out:
