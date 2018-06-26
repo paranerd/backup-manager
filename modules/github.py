@@ -83,8 +83,6 @@ class Github_Backup:
                 self.token = self.get_token()
                 self.config_set('token', self.token)
 
-            util.log("/")
-
             repositories = self.get_repositories()
 
             for repository in repositories:
@@ -139,7 +137,7 @@ class Github_Backup:
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
 
-        util.log("    " + os.path.basename(filename))
+        util.log(os.path.basename(filename))
 
         with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
             data = response.read()
