@@ -29,9 +29,6 @@ def md5_file(path):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def log(msg):
-    print(get_timestamp(True) + " | " + str(msg))
-
 def get_timestamp(format=False):
     if format:
         return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -39,7 +36,7 @@ def get_timestamp(format=False):
         return int(round(time.time() * 1000))
 
 def log(msg):
-    msg = get_timestamp(True) + " | " + msg
+    msg = get_timestamp(True) + " | " + str(msg)
 
     print(msg)
 
