@@ -1,5 +1,6 @@
 tokens/
 backups/
+cache/
 config.json
 backup.log
 __pycache__/
