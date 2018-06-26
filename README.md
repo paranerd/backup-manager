@@ -26,8 +26,8 @@ sudo apt install python3, python3-urllib3
 
     ```python
     {
-        "github" = {
-            "backup_path" = "/path/to/your/backups"
+        "github": {
+            "backup_path": "/path/to/your/backups"
         }
     }
     ```
