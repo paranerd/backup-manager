@@ -126,17 +126,21 @@ class Google_Photos_Backup():
         if not self.token:
             self.request_code()
 
-        util.log("Getting albums")
-        albums = self.get_albums()
+        try:
+            util.log("Getting albums")
+            albums = self.get_albums()
 
-        for album in albums:
-            util.log(album['title'])
+            for album in albums:
+                util.log(album['title'])
 
-            self.get_album_contents(album['id'], album['title'])
+                self.get_album_contents(album['id'], album['title'])
 
-        self.write_cache()
+            util.log("Finished Google Photos backup") 
+        except KeyboardInterrupt:
+            util.log("Interrupted")
+        finally:
+            self.write_cache()
 
-        util.log("Finished Google Photos backup")
 
     def get_albums(self, pageToken=""):
         params = {
@@ -208,6 +212,7 @@ class Google_Photos_Backup():
                 filename = re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
 
                 if os.path.isfile(os.path.join(path, filename)):
+                    self.cache[id] = filename
                     return
 
         # Download file
