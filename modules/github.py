@@ -92,6 +92,8 @@ class Github_Backup:
 
                 self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
 
+            util.log("Finished Github backup")
+
         except Exception as e:
             util.log(e)
 
