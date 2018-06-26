@@ -148,6 +148,8 @@ class Google_Drive_Backup():
 
         self.get_children()
 
+        util.log("Finished Google Drive backup")
+
     def get_children(self, id='root', parents=[], pageToken=""):
         path = self.backup_path + "/" + "/".join(parents).strip("/")
         util.log("/" + ("/".join(parents)))
@@ -172,7 +174,7 @@ class Google_Drive_Backup():
         # Send request
         res = self.execute_request(self.GOOGLE_API + "?" + params_str)
 
-        items = res['body']['files']
+        items = res['body']['files'] if res['status'] == 200 else []
 
         for item in items:
             # Folders
