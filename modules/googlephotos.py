@@ -19,6 +19,7 @@ class Google_Photos_Backup():
     module = 'googlephotos'
     config = {}
     cache = {}
+    full = True
 
     def __init__(self):
         self.config = self.read_config()
@@ -26,6 +27,7 @@ class Google_Photos_Backup():
         self.token = self.config_get('token')
         self.backup_path = self.get_backup_path()
         self.cache = self.get_cache()
+        self.full = self.config_get('full', False)
 
     def get_cache(self):
         if not os.path.exists('googlephotos_cache.json'):
@@ -130,9 +132,17 @@ class Google_Photos_Backup():
 
         for album in albums:
             util.log(album['title'])
-            self.get_album_contents(album['id'], album['title'])
+
+            result = re.match('([0-9]{4})-', album['title'])
+            year = result.group(1) if result else None
+
+            # Only backup in "full"-Mode, or album title does not start with a year or album does not exist
+            if self.full or year is None or not os.path.exists(os.path.join(self.backup_path, year, album['title'])):
+                self.get_album_contents(album['id'], album['title'])
 
         self.write_cache()
+
+        util.log("Finished Google Photos backup")
 
     def get_albums(self):
         res = self.execute_request(self.GOOGLE_API + "/albums")
