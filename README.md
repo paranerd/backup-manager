@@ -36,10 +36,13 @@ sudo apt install python3, python3-urllib3
 
 1. Go to https://console.developers.google.com/
 2. Create a project
-3. On the left, choose "Credentials"
-4. Create an OAuth-Client-ID for "Others"
-5. Download the generated credentials json
-6. When prompted by the script, paste the content of that json
+3. On the left select "Dashboard"
+4. Select "Activate APIs and services"
+5. Activate both Google Drive API and Photos Library API
+6. On the left select "Credentials"
+7. Create an OAuth-Client-ID for "Others"
+8. Download the generated credentials json
+9. When prompted by the script, paste the content of that json
 
 ## How it works
 1. Github
