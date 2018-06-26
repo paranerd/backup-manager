@@ -86,7 +86,7 @@ class Google_Drive_Backup():
 
         # Execute request
         if method == 'GET':
-            res = requests.get(url, headers=headers)
+            res = requests.get(url, headers=headers, params=params)
         else:
             res = requests.post(url, headers=headers, data=params)
 
