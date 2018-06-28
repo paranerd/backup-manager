@@ -37,8 +37,9 @@ def get_timestamp(format=False):
 
 def log(msg):
     msg = get_timestamp(True) + " | " + str(msg)
+    project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
     print(msg)
 
-    with open("backup.log", "a") as log:
+    with open(os.path.join(project_path, "backup.log"), "a") as log:
         log.write(msg + "\n")
