@@ -101,8 +101,10 @@ class Google_Photos_Backup():
         # Execute request
         if method == 'GET':
             res = requests.get(url, headers=headers, params=params)
-        else:
+        elif method == 'POST':
             res = requests.post(url, headers=headers, data=params)
+        elif method == 'HEAD':
+            res = requests.head(url, headers=headers)
 
         if res.status_code == 401:
             # Token expired
@@ -112,7 +114,9 @@ class Google_Photos_Backup():
             else:
                 raise Exception("Failed to refresh token")
 
-        return {'status': res.status_code, 'body': res.json()}
+        body = res.json() if method != 'HEAD' else None
+
+        return {'status': res.status_code, 'headers': res.headers, 'body': body}
 
     def backup(self):
         util.log("")
@@ -184,10 +188,21 @@ class Google_Photos_Backup():
                 filename = self.cache[item['id']] if item['id'] in self.cache else ''
                 url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + width + "-h" + height
 
+                if 'video' in item['mediaMetadata']:
+                    filename = filename if filename else self.get_video_filename(item)
+
                 self.download(item['baseUrl'] + url_postfix, item['id'], path, filename, True)
 
         if 'nextPageToken' in res['body']:
             self.get_album_contents(id, name, res['body']['nextPageToken'])
+
+    def get_video_filename(self, item):
+        res = self.execute_request(item['baseUrl'], {}, {}, "HEAD")
+
+        filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
+        filename, file_extension = os.path.splitext(filename)
+
+        return filename + ".mp4"
 
     def download(self, url, id, path, filename="", check_if_exists=False):
         # Create folder if not exists
@@ -204,13 +219,14 @@ class Google_Photos_Backup():
                 if os.path.isfile(os.path.join(path, filename)):
                     return
             else:
-                res = requests.head(url, headers=headers)
+                res = self.execute_request(url, {}, {}, 'HEAD')
 
-                if res.status_code != 200:
+                if res['status'] != 200:
                     util.log("Error getting file info")
+                    util.log(str(res['status']) + " | " + str(res['headers']))
                     return
 
-                filename = re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
+                filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
 
                 if os.path.isfile(os.path.join(path, filename)):
                     self.cache[id] = filename
@@ -234,7 +250,8 @@ class Google_Photos_Backup():
 
             r.release_conn()
         else:
-            util.log("Error downloading: " + str(r.status) + " | " + str(r.data))
+            util.log("Error downloading")
+            util.log(str(r.status) + " | " + str(r.data))
 
     def create_album(self, name):
         params = {
