@@ -135,7 +135,7 @@ class Google_Photos_Backup():
 
                 self.get_album_contents(album['id'], album['title'])
 
-            util.log("Finished Google Photos backup") 
+            util.log("Finished Google Photos backup")
         except KeyboardInterrupt:
             util.log("Interrupted")
         finally:
@@ -183,8 +183,9 @@ class Google_Photos_Backup():
 
                 path = self.backup_path + "/" + year + "/" + name
                 filename = self.cache[item['id']] if item['id'] in self.cache else ''
+                url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + width + "-h" + height
 
-                self.download(item['baseUrl'] + "=w" + width + "-h" + height, item['id'], path, filename, True)
+                self.download(item['baseUrl'] + url_postfix, item['id'], path, filename, True)
 
         if 'nextPageToken' in res['body']:
             self.get_album_contents(id, name, res['body']['nextPageToken'])
