@@ -214,7 +214,8 @@ class Google_Drive_Backup():
             res = requests.head(url, headers=headers)
 
             if res.status_code != 200:
-                raise Exception("Error getting file info")
+                util.log("Error getting file info")
+                return
 
             filename = filename if filename else re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
 
@@ -238,7 +239,7 @@ class Google_Drive_Backup():
 
             r.release_conn()
         else:
-            raise Exception("Error downloading")
+            util.log("Error downloading: " + str(r.status) + " | " + str(r.data))
 
 if __name__ == "__main__":
     gd = Google_Drive_Backup()

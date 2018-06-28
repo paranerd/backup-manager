@@ -208,7 +208,8 @@ class Google_Photos_Backup():
                 res = requests.head(url, headers=headers)
 
                 if res.status_code != 200:
-                    raise Exception("Error getting file info")
+                    util.log("Error getting file info")
+                    return
 
                 filename = re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
 
@@ -234,7 +235,7 @@ class Google_Photos_Backup():
 
             r.release_conn()
         else:
-            raise Exception("Error downloading")
+            util.log("Error downloading: " + str(r.status) + " | " + str(r.data))
 
     def create_album(self, name):
         params = {
