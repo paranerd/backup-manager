@@ -18,6 +18,7 @@ class Google_Photos_Backup():
     backup_path = ''
     module = 'googlephotos'
     config = {}
+    cache_path = os.path.join(project_path, 'cache', 'googlephotos.json')
     cache = {}
 
     def __init__(self):
@@ -28,16 +29,14 @@ class Google_Photos_Backup():
         self.cache = self.get_cache()
 
     def get_cache(self):
-        if not os.path.exists('cache/googlephotos.json'):
+        if not os.path.exists(self.cache_path):
             return {}
 
-        with open('cache/googlephotos.json', 'r') as f:
+        with open(self.cache_path, 'r') as f:
             return json.load(f)
 
     def write_cache(self):
-        #if not os.path.exists('googlephotos_cache.json'):
-
-        with open('cache/googlephotos.json', 'w') as f:
+        with open(self.cache_path, 'w') as f:
             f.write(json.dumps(self.cache, indent=4))
 
     def get_backup_path(self):
