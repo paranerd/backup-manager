@@ -95,13 +95,23 @@ class Github_Backup:
         except Exception as e:
             util.log(e)
 
-    def get_repositories(self):
+    def get_repositories(self, page_url=""):
         repositories = []
-        res = requests.get(self.GITHUB_API + "/users/" + self.username + "/repos", auth=(self.username,self.token))
+        url = page_url if page_url else self.GITHUB_API + "/users/" + self.username + "/repos"
+        res = requests.get(url, auth=(self.username,self.token))
 
         if res.status_code == 200:
             for repository in res.json():
                 repositories.append(repository)
+
+        if 'Link' in res.headers and res.headers['Link'].find('rel="next"') != -1:
+            page_url = re.search('<(.*?)>', res.headers['Link']).group(1)
+            util.log(res.headers['Link'])
+            util.log(page_url)
+            repositories.extend(self.get_repositories(page_url))
+
+        for repository in repositories:
+            util.log(repository['name'])
 
         return repositories
 
