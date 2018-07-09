@@ -106,12 +106,7 @@ class Github_Backup:
 
         if 'Link' in res.headers and res.headers['Link'].find('rel="next"') != -1:
             page_url = re.search('<(.*?)>', res.headers['Link']).group(1)
-            util.log(res.headers['Link'])
-            util.log(page_url)
             repositories.extend(self.get_repositories(page_url))
-
-        for repository in repositories:
-            util.log(repository['name'])
 
         return repositories
 
