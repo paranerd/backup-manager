@@ -36,7 +36,7 @@ class Google_Photos_Backup():
             return json.load(f)
 
     def write_cache(self):
-        with open(self.cache_path, 'w') as f:
+        with open(self.cache_path, 'w+') as f:
             f.write(json.dumps(self.cache, indent=4))
 
     def get_backup_path(self):
