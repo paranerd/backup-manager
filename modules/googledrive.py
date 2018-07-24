@@ -146,9 +146,12 @@ class Google_Drive_Backup():
         if not self.token:
             self.request_code()
 
-        self.get_children()
+        try:
+            self.get_children()
 
-        util.log("Finished Google Drive backup")
+            util.log("Finished Google Drive backup")
+        except KeyboardInterrupt:
+            util.log("Interrupted")
 
     def get_children(self, id='root', parents=[], pageToken=""):
         path = self.backup_path + "/" + "/".join(parents).strip("/")
@@ -191,7 +194,7 @@ class Google_Drive_Backup():
             # Regular files
             else:
                 checksum_server = item['md5Checksum'] if 'md5Checksum' in item else ''
-                checksum_local = util.md5_file(path)
+                checksum_local = util.md5_file(os.path.join(path, item['name']))
 
                 if not checksum_server or checksum_server != checksum_local:
                     url = self.GOOGLE_API + "/" + item['id'] + '?alt=media'
