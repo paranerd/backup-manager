@@ -86,7 +86,6 @@ class Github_Backup:
             repositories = self.get_repositories()
 
             for repository in repositories:
-                util.log(repository)
                 version = self.get_current_version(repository)
 
                 self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
@@ -99,7 +98,6 @@ class Github_Backup:
     def get_repositories(self, page_url=""):
         repositories = []
         url = page_url if page_url else self.GITHUB_API + "/users/" + self.username + "/repos"
-        util.log(url)
         res = requests.get(url, auth=(self.username,self.token))
 
         if res.status_code == 200:
@@ -107,7 +105,6 @@ class Github_Backup:
                 repositories.append(repository)
 
         if 'Link' in res.headers and res.headers['Link'].find('rel="next"') != -1:
-            util.log(res.headers)
             page_url = re.search('\<([^;]+)\>; rel=\"next\"', res.headers['Link']).group(1)
             repositories.extend(self.get_repositories(page_url))
 
