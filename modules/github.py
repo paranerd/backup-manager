@@ -86,6 +86,7 @@ class Github_Backup:
             repositories = self.get_repositories()
 
             for repository in repositories:
+                util.log(repository['name'])
                 version = self.get_current_version(repository)
 
                 self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
