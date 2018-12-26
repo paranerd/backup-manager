@@ -143,7 +143,7 @@ class Github_Backup:
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
 
-        util.log(os.path.basename(filename))
+        util.log("    " + os.path.basename(filename))
 
         with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
             data = response.read()
