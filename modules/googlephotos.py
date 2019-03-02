@@ -181,12 +181,9 @@ class Google_Photos_Backup():
             year = result.group(1) if result else '0000'
 
             for item in items:
-                width = item['mediaMetadata']['width']
-                height = item['mediaMetadata']['height']
-
                 path = self.backup_path + "/" + year + "/" + name
                 filename = self.cache[item['id']] if item['id'] in self.cache else ''
-                url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + width + "-h" + height
+                url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + item['mediaMetadata']['width'] + "-h" + item['mediaMetadata']['height']
 
                 if 'video' in item['mediaMetadata']:
                     filename = filename if filename else self.get_video_filename(item)
