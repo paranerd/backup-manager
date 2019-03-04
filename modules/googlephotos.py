@@ -20,6 +20,7 @@ class Google_Photos_Backup():
     config = {}
     cache_path = os.path.join(project_path, 'cache', 'googlephotos.json')
     cache = {}
+    excluded = []
 
     def __init__(self):
         self.config = self.read_config()
@@ -27,6 +28,7 @@ class Google_Photos_Backup():
         self.token = self.config_get('token')
         self.backup_path = self.get_backup_path()
         self.cache = self.get_cache()
+        self.excluded = self.config_get('exclude', [])
 
     def get_cache(self):
         if not os.path.exists(self.cache_path):
@@ -134,9 +136,12 @@ class Google_Photos_Backup():
             albums = self.get_albums()
 
             for album in albums:
-                util.log(album['title'])
+                if self.check_if_excluded(album['title']):
+                    util.log(album['title'] + " (excluded)")
+                else:
+                    util.log(album['title'])
 
-                self.get_album_contents(album['id'], album['title'])
+                    self.get_album_contents(album['id'], album['title'])
 
             util.log("Finished Google Photos backup")
         except KeyboardInterrupt:
@@ -144,6 +149,12 @@ class Google_Photos_Backup():
         finally:
             self.write_cache()
 
+    def check_if_excluded(self, name):
+        for e in self.excluded:
+            if re.match(e, name):
+                return True
+
+        return False
 
     def get_albums(self, pageToken=""):
         params = {
