@@ -6,9 +6,6 @@ import webbrowser
 import urllib3
 from urllib.parse import urlencode, quote_plus
 
-from . import util
-from .log import Logger
-
 class Google_Photos_Backup():
     GOOGLE_API = "https://photoslibrary.googleapis.com/v1"
     SCOPES = 'https://www.googleapis.com/auth/photoslibrary'
@@ -23,14 +20,14 @@ class Google_Photos_Backup():
     cache = {}
     excluded = []
 
-    def __init__(self):
+    def __init__(self, logger):
         self.config = self.read_config()
         self.credentials = self.config_get('credentials', None)
         self.token = self.config_get('token')
         self.backup_path = self.get_backup_path()
         self.cache = self.get_cache()
         self.excluded = self.config_get('exclude', [])
-        self.logger = Logger()
+        self.logger = logger
 
     def get_cache(self):
         if not os.path.exists(self.cache_path):

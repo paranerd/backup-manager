@@ -7,7 +7,6 @@ import urllib3
 from urllib.parse import urlencode, quote_plus
 
 from . import util
-from .log import Logger
 
 class Google_Drive_Backup():
     GOOGLE_API = "https://www.googleapis.com/drive/v3/files"
@@ -20,13 +19,13 @@ class Google_Drive_Backup():
     module = 'googledrive'
     config = {}
 
-    def __init__(self):
+    def __init__(self, logger):
         self.config = self.read_config()
         self.credentials = self.config_get('credentials', None)
         self.token = self.config_get('token')
         self.exclude = self.config_get('exclude', [])
         self.backup_path = self.get_backup_path()
-        self.logger = Logger()
+        self.logger = logger
 
     def get_backup_path(self):
         backup_path = self.config_get('backup_path', 'backups/' + self.module)

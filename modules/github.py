@@ -9,8 +9,6 @@ import json
 import os
 import re
 
-from .log import Logger
-
 class Github_Backup:
     username = ""
     token = ""
@@ -21,10 +19,10 @@ class Github_Backup:
     module = 'github'
     backup_path = ''
 
-    def __init__(self):
+    def __init__(self, logger):
         self.config = self.read_config()
         self.backup_path = self.get_backup_path()
-        self.logger = Logger()
+        self.logger = logger
 
     def get_backup_path(self):
         backup_path = self.config_get('backup_path', 'backups/' + self.module)
@@ -146,7 +144,7 @@ class Github_Backup:
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
 
-        self.logger.write(" -> " + os.path.basename(filename))
+        self.logger.prepare(" -> " + os.path.basename(filename))
 
         with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
             data = response.read()
