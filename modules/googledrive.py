@@ -7,6 +7,7 @@ import urllib3
 from urllib.parse import urlencode, quote_plus
 
 from . import util
+from .log import Logger
 
 class Google_Drive_Backup():
     GOOGLE_API = "https://www.googleapis.com/drive/v3/files"
@@ -23,7 +24,9 @@ class Google_Drive_Backup():
         self.config = self.read_config()
         self.credentials = self.config_get('credentials', None)
         self.token = self.config_get('token')
+        self.exclude = self.config_get('exclude', [])
         self.backup_path = self.get_backup_path()
+        self.logger = Logger()
 
     def get_backup_path(self):
         backup_path = self.config_get('backup_path', 'backups/' + self.module)
@@ -38,7 +41,7 @@ class Google_Drive_Backup():
 
     def request_credentials(self):
         credentials_str = input('Paste credentials: ')
-        util.log("")
+        self.logger.write("")
         self.credentials = json.loads(credentials_str)['installed']
 
         self.config_set('credentials', self.credentials)
@@ -49,9 +52,9 @@ class Google_Drive_Backup():
 
         webbrowser.open(auth_uri, new=2)
 
-        util.log("If your browser does not open, go to this website:")
-        util.log(auth_uri)
-        util.log("")
+        self.logger.write("If your browser does not open, go to this website:")
+        self.logger.write(auth_uri)
+        self.logger.write("")
 
         code = input('Enter code: ')
 
@@ -136,9 +139,9 @@ class Google_Drive_Backup():
             raise Exception("Error getting token: " + str(res['body']))
 
     def backup(self):
-        util.log("")
-        util.log("### Backup Google Drive ###")
-        util.log("")
+        self.logger.write("")
+        self.logger.write("### Backup Google Drive ###")
+        self.logger.write("")
 
         if not self.credentials:
             self.request_credentials()
@@ -149,13 +152,30 @@ class Google_Drive_Backup():
         try:
             self.get_children()
 
-            util.log("Finished Google Drive backup")
+            self.logger.write("Finished Google Drive backup")
         except KeyboardInterrupt:
-            util.log("Interrupted")
+            self.logger.write("Interrupted")
+
+    def check_if_excluded(self, path):
+        for e in self.exclude:
+            if re.match(e, path):
+                return True
+
+        return False
+
+    def is_type(self, item, type):
+        if type == 'folder' and item['mimeType'] == 'application/vnd.google-apps.folder':
+            return True
+        elif type == 'document' and item['mimeType'] == 'application/vnd.google-apps.document':
+            return True
+        elif type == 'spreadsheet' and item['mimeType'] == 'application/vnd.google-apps.spreadsheet':
+            return True
+        else:
+            return False
 
     def get_children(self, id='root', parents=[], pageToken=""):
-        path = self.backup_path + "/" + "/".join(parents).strip("/")
-        util.log("/" + ("/".join(parents)))
+        path_server = "/" + "/".join(parents).strip("/")
+        path = os.path.join(self.backup_path, path_server.strip("/"))
 
         params = {
             "q": "'" + id + "' in parents",
@@ -180,15 +200,23 @@ class Google_Drive_Backup():
         items = res['body']['files'] if res['status'] == 200 else []
 
         for item in items:
+            path_item = os.path.join(path_server, item['name'])
+
+            if self.check_if_excluded(path_item):
+                self.logger.write(path_item + " | excluded")
+                continue
+            elif not self.is_type(item, 'folder'):
+                self.logger.prepare(path_item)
+
             # Folders
-            if item['mimeType'] == 'application/vnd.google-apps.folder':
+            if self.is_type(item, 'folder'):
                 self.get_children(item['id'], parents + [item['name']])
             # Google Docs
-            elif item['mimeType'] == 'application/vnd.google-apps.document':
+            elif self.is_type(item, 'document'):
                 url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/pdf"
                 self.download(url, path, item['name'] + ".pdf", False)
             # Google Spreadsheets
-            elif item['mimeType'] == 'application/vnd.google-apps.spreadsheet':
+            elif self.is_type(item, 'spreadsheet'):
                 url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 self.download(url, path, item['name'] + ".xlsx", False)
             # Regular files
@@ -199,6 +227,8 @@ class Google_Drive_Backup():
                 if not checksum_server or checksum_server != checksum_local:
                     url = self.GOOGLE_API + "/" + item['id'] + '?alt=media'
                     self.download(url, path, item['name'], False)
+
+            self.logger.flush()
 
         if 'nextPageToken' in res['body']:
             self.get_children(id, parents, res['body']['nextPageToken'])
@@ -217,7 +247,7 @@ class Google_Drive_Backup():
             res = requests.head(url, headers=headers)
 
             if res.status_code != 200:
-                util.log("Error getting file info")
+                util.prepare(" (Error getting file info)")
                 return
 
             filename = filename if filename else re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
@@ -231,7 +261,6 @@ class Google_Drive_Backup():
 
         if r.status == 200:
             filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
-            util.log("    " + filename)
 
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:
@@ -242,7 +271,7 @@ class Google_Drive_Backup():
 
             r.release_conn()
         else:
-            util.log("Error downloading: " + str(r.status) + " | " + str(r.data))
+            self.logger.prepare(" (Error downloading: " + str(r.status) + " | " + str(r.data) + ")")
 
 if __name__ == "__main__":
     gd = Google_Drive_Backup()

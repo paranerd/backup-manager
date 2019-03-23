@@ -3,10 +3,6 @@ import time
 import datetime
 import hashlib
 
-project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-log_name = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S') + ".log"
-backup_path = os.path.join(project_path, "log", log_name)
-
 ##
 # Create folder if not exists
 #
@@ -56,21 +52,3 @@ def get_timestamp(format=False):
         return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     else:
         return int(round(time.time() * 1000))
-
-##
-# Write message to log and print to console
-#
-# @param string msg
-def log(msg):
-    # Create backup folder
-    create_folder(os.path.dirname(backup_path))
-
-    # Build message
-    msg = get_timestamp(True) + " | " + str(msg)
-
-    # Print message to terminal
-    print(msg)
-
-    # Write message to file
-    with open(backup_path, "a") as log:
-        log.write(msg + "\n")

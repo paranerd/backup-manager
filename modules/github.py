@@ -9,7 +9,7 @@ import json
 import os
 import re
 
-from . import util
+from .log import Logger
 
 class Github_Backup:
     username = ""
@@ -24,6 +24,7 @@ class Github_Backup:
     def __init__(self):
         self.config = self.read_config()
         self.backup_path = self.get_backup_path()
+        self.logger = Logger()
 
     def get_backup_path(self):
         backup_path = self.config_get('backup_path', 'backups/' + self.module)
@@ -56,7 +57,7 @@ class Github_Backup:
             f.write(json.dumps(self.config, indent=4))
 
     def get_token(self):
-        util.log("Getting token...")
+        self.logger.write("Getting token...")
         password = getpass.getpass('Github password (' + self.username + '): ')
 
         res = requests.post(self.GITHUB_API + "/authorizations", auth = (self.username, password), data = json.dumps({'note': 'backup', 'note_url': 'backup_my_accounts'}))
@@ -67,9 +68,9 @@ class Github_Backup:
         raise Exception("Error obtaining token: " + str(res.json()))
 
     def backup(self):
-        util.log("")
-        util.log("### Backup Github ###")
-        util.log("")
+        self.logger.write("")
+        self.logger.write("### Backup Github ###")
+        self.logger.write("")
 
         try:
             self.username = self.config_get('username')
@@ -86,15 +87,17 @@ class Github_Backup:
             repositories = self.get_repositories()
 
             for repository in repositories:
-                util.log(repository['name'])
+                self.logger.prepare(repository['name'])
                 version = self.get_current_version(repository)
 
                 self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
+                self.logger.flush()
 
-            util.log("Finished Github backup")
+            self.logger.write("Finished Github backup")
 
         except Exception as e:
-            util.log(e)
+            self.logger.flush()
+            self.logger.write(e)
 
     def get_repositories(self, page_url=""):
         repositories = []
@@ -143,7 +146,7 @@ class Github_Backup:
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
 
-        util.log("    " + os.path.basename(filename))
+        self.logger.write(" -> " + os.path.basename(filename))
 
         with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
             data = response.read()

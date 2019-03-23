@@ -7,6 +7,7 @@ import urllib3
 from urllib.parse import urlencode, quote_plus
 
 from . import util
+from .log import Logger
 
 class Google_Photos_Backup():
     GOOGLE_API = "https://photoslibrary.googleapis.com/v1"
@@ -29,6 +30,7 @@ class Google_Photos_Backup():
         self.backup_path = self.get_backup_path()
         self.cache = self.get_cache()
         self.excluded = self.config_get('exclude', [])
+        self.logger = Logger()
 
     def get_cache(self):
         if not os.path.exists(self.cache_path):
@@ -54,7 +56,7 @@ class Google_Photos_Backup():
 
     def request_credentials(self):
         credentials_str = input('Paste credentials: ')
-        util.log("")
+        self.logger.write("")
         self.credentials = json.loads(credentials_str)['installed']
 
         self.config_set('credentials', self.credentials)
@@ -65,9 +67,9 @@ class Google_Photos_Backup():
 
         webbrowser.open(auth_uri, new=2)
 
-        util.log("If your browser does not open, go to this website:")
-        util.log(auth_uri)
-        util.log("")
+        self.logger.write("If your browser does not open, go to this website:")
+        self.logger.write(auth_uri)
+        self.logger.write("")
 
         code = input('Enter code: ')
 
@@ -121,9 +123,9 @@ class Google_Photos_Backup():
         return {'status': res.status_code, 'headers': res.headers, 'body': body}
 
     def backup(self):
-        util.log("")
-        util.log("### Backup Google Photos ###")
-        util.log("")
+        self.logger.write("")
+        self.logger.write("### Backup Google Photos ###")
+        self.logger.write("")
 
         if not self.credentials:
             self.request_credentials()
@@ -132,20 +134,20 @@ class Google_Photos_Backup():
             self.request_code()
 
         try:
-            util.log("Getting albums")
+            self.logger.write("Getting albums")
             albums = self.get_albums()
 
             for album in albums:
                 if self.check_if_excluded(album['title']):
-                    util.log(album['title'] + " (excluded)")
+                    self.logger.write(album['title'] + " | excluded")
                 else:
-                    util.log(album['title'])
+                    self.logger.write(album['title'])
 
                     self.get_album_contents(album['id'], album['title'])
 
-            util.log("Finished Google Photos backup")
+            self.logger.write("Finished Google Photos backup")
         except KeyboardInterrupt:
-            util.log("Interrupted")
+            self.logger.write("Interrupted")
         finally:
             self.write_cache()
 
@@ -230,8 +232,8 @@ class Google_Photos_Backup():
                 res = self.execute_request(url, {}, {}, 'HEAD')
 
                 if res['status'] != 200:
-                    util.log("Error getting file info")
-                    util.log(str(res['status']) + " | " + str(res['headers']))
+                    self.logger.write("Error getting file info")
+                    self.logger.write(str(res['status']) + " | " + str(res['headers']))
                     return
 
                 filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
@@ -247,7 +249,7 @@ class Google_Photos_Backup():
         if r.status == 200:
             filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
             self.cache[id] = filename
-            util.log("    " + filename)
+            self.logger.write("    " + filename)
 
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:
@@ -258,8 +260,8 @@ class Google_Photos_Backup():
 
             r.release_conn()
         else:
-            util.log("Error downloading")
-            util.log(str(r.status) + " | " + str(r.data))
+            self.logger.write("Error downloading")
+            self.logger.write(str(r.status) + " | " + str(r.data))
 
     def create_album(self, name):
         params = {
