@@ -9,147 +9,128 @@ import json
 import os
 import re
 
+from . import config
+
 class Github_Backup:
-    username = ""
-    token = ""
-    backup_path = ''
-    GITHUB_API = "https://api.github.com"
-    config = {}
-    project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    module = 'github'
-    backup_path = ''
+	username = ""
+	token = ""
+	backup_path = ''
+	GITHUB_API = "https://api.github.com"
+	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+	module = 'github'
+	backup_path = ''
 
-    def __init__(self, logger):
-        self.config = self.read_config()
-        self.backup_path = self.get_backup_path()
-        self.logger = logger
+	def __init__(self, logger):
+		self.backup_path = self.get_backup_path()
+		self.logger = logger
 
-    def get_backup_path(self):
-        backup_path = self.config_get('backup_path', 'backups/' + self.module)
+	def get_backup_path(self):
+		backup_path = config.get(self.module, 'backup_path', 'backups/' + self.module)
 
-        if not backup_path.startswith("/"):
-            backup_path = self.project_path + "/" + backup_path
+		if not backup_path.startswith("/"):
+			backup_path = self.project_path + "/" + backup_path
 
-        if not os.path.exists(backup_path):
-            os.makedirs(backup_path)
+		if not os.path.exists(backup_path):
+			os.makedirs(backup_path)
 
-        return backup_path
+		return backup_path
 
-    def read_config(self):
-        with open(self.project_path + '/config.json', 'r') as f:
-            return json.load(f)
+	def get_token(self):
+		self.logger.write("Getting token...")
+		password = getpass.getpass('Github password (' + self.username + '): ')
 
-    def config_get(self, key, default=""):
-        if not self.module in self.config:
-            self.config[self.module] = {}
-            self.write_config()
+		res = requests.post(self.GITHUB_API + "/authorizations", auth = (self.username, password), data = json.dumps({'note': 'backup2', 'note_url': 'backup_my_accounts2'}))
 
-        return self.config[self.module][key] if key in self.config[self.module] and self.config[self.module][key] != "" else default
+		if res.status_code == 201:
+			return res.json()['token']
 
-    def config_set(self, key, value):
-        self.config[self.module][key] = value
-        self.write_config()
+		raise Exception("Error obtaining token: " + str(res.json()))
 
-    def write_config(self):
-        with open(self.project_path + '/config.json', 'w') as f:
-            f.write(json.dumps(self.config, indent=4))
+	def backup(self):
+		self.logger.write("")
+		self.logger.write("### Backup Github ###")
+		self.logger.write("")
 
-    def get_token(self):
-        self.logger.write("Getting token...")
-        password = getpass.getpass('Github password (' + self.username + '): ')
+		try:
+			self.username = config.get(self.module, 'username')
+			self.token = config.get(self.module, 'token')
 
-        res = requests.post(self.GITHUB_API + "/authorizations", auth = (self.username, password), data = json.dumps({'note': 'backup', 'note_url': 'backup_my_accounts'}))
+			if not self.username:
+				self.username = input('Github username: ')
+				config.set(self.module, 'username', self.username)
 
-        if res.status_code == 201:
-            return res.json()['token']
+			if not self.token:
+				self.token = self.get_token()
+				config.set(self.module, 'token', self.token)
 
-        raise Exception("Error obtaining token: " + str(res.json()))
+			repositories = self.get_repositories()
 
-    def backup(self):
-        self.logger.write("")
-        self.logger.write("### Backup Github ###")
-        self.logger.write("")
+			for repository in repositories:
+				self.logger.prepare(repository['name'])
+				version = self.get_current_version(repository)
 
-        try:
-            self.username = self.config_get('username')
-            self.token = self.config_get('token')
+				self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
+				self.logger.flush()
 
-            if not self.username:
-                self.username = input('Github username: ')
-                self.config_set('username', self.username)
+			self.logger.write("Finished Github backup")
 
-            if not self.token:
-                self.token = self.get_token()
-                self.config_set('token', self.token)
+		except Exception as e:
+			self.logger.flush()
+			self.logger.write(e)
 
-            repositories = self.get_repositories()
+	def get_repositories(self, page_url=""):
+		repositories = []
+		url = page_url if page_url else self.GITHUB_API + "/users/" + self.username + "/repos"
+		res = requests.get(url, auth=(self.username,self.token))
 
-            for repository in repositories:
-                self.logger.prepare(repository['name'])
-                version = self.get_current_version(repository)
+		if res.status_code == 200:
+			for repository in res.json():
+				repositories.append(repository)
 
-                self.download(version['url'], repository['name'], self.backup_path, repository['name'] + "-" + version['number'] + ".zip", True)
-                self.logger.flush()
+		if 'Link' in res.headers and res.headers['Link'].find('rel="next"') != -1:
+			page_url = re.search('\<([^;]+)\>; rel=\"next\"', res.headers['Link']).group(1)
+			repositories.extend(self.get_repositories(page_url))
 
-            self.logger.write("Finished Github backup")
+		return repositories
 
-        except Exception as e:
-            self.logger.flush()
-            self.logger.write(e)
+	def get_current_version(self, repository):
+		res = requests.get(repository['tags_url'], auth=(self.username,self.token)).json()
 
-    def get_repositories(self, page_url=""):
-        repositories = []
-        url = page_url if page_url else self.GITHUB_API + "/users/" + self.username + "/repos"
-        res = requests.get(url, auth=(self.username,self.token))
+		version = res[0]['name'] if len(res) > 0 and 'name' in res[0] else '1.0'
+		url = res[0]['zipball_url'] if len(res) > 0 and 'zipball_url' in res[0] else "https://github.com/" + self.username + "/" + repository['name'] + "/archive/master.zip"
 
-        if res.status_code == 200:
-            for repository in res.json():
-                repositories.append(repository)
+		return {'number': version, 'url': url}
 
-        if 'Link' in res.headers and res.headers['Link'].find('rel="next"') != -1:
-            page_url = re.search('\<([^;]+)\>; rel=\"next\"', res.headers['Link']).group(1)
-            repositories.extend(self.get_repositories(page_url))
+	def get_current_tag(self, repository):
+		tags = requests.get(repository['tags_url'], auth=(self.username, self.token)).json()
 
-        return repositories
+		return tags[0]['name'] if len(tags) > 0 and 'name' in tags[0] else '1.0'
 
-    def get_current_version(self, repository):
-        res = requests.get(repository['tags_url'], auth=(self.username,self.token)).json()
+	def delete_older_versions(self, path, repo_name):
+		for f in os.listdir(path):
+			if re.search('^' + repo_name + '-[0-9.]+zip', f):
+				os.remove(os.path.join(self.backup_path, f))
 
-        version = res[0]['name'] if len(res) > 0 and 'name' in res[0] else '1.0'
-        url = res[0]['zipball_url'] if len(res) > 0 and 'zipball_url' in res[0] else "https://github.com/" + self.username + "/" + repository['name'] + "/archive/master.zip"
+	def download(self, url, repo_name, path, filename, check_if_exists=False):
+		# Check if file exists
+		if check_if_exists and os.path.isfile(os.path.join(path, filename)):
+			return
 
-        return {'number': version, 'url': url}
+		# Delete older version
+		self.delete_older_versions(path, repo_name)
 
-    def get_current_tag(self, repository):
-        tags = requests.get(repository['tags_url'], auth=(self.username, self.token)).json()
+		passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+		passman.add_password(None, url, self.username, self.token)
+		authhandler = urllib.request.HTTPBasicAuthHandler(passman)
+		opener = urllib.request.build_opener(authhandler)
+		urllib.request.install_opener(opener)
 
-        return tags[0]['name'] if len(tags) > 0 and 'name' in tags[0] else '1.0'
+		self.logger.prepare(" -> " + os.path.basename(filename))
 
-    def delete_older_versions(self, path, repo_name):
-        for f in os.listdir(path):
-            if re.search('^' + repo_name + '-[0-9.]+zip', f):
-                os.remove(os.path.join(self.backup_path, f))
-
-    def download(self, url, repo_name, path, filename, check_if_exists=False):
-        # Check if file exists
-        if check_if_exists and os.path.isfile(os.path.join(path, filename)):
-            return
-
-        # Delete older version
-        self.delete_older_versions(path, repo_name)
-
-        passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-        passman.add_password(None, url, self.username, self.token)
-        authhandler = urllib.request.HTTPBasicAuthHandler(passman)
-        opener = urllib.request.build_opener(authhandler)
-        urllib.request.install_opener(opener)
-
-        self.logger.prepare(" -> " + os.path.basename(filename))
-
-        with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
-            data = response.read()
-            out_file.write(data)
+		with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
+			data = response.read()
+			out_file.write(data)
 
 if __name__ == "__main__":
-    g = Github_Backup()
-    g.backup()
+	g = Github_Backup()
+	g.backup()

@@ -7,300 +7,300 @@ import urllib3
 from urllib.parse import urlencode, quote_plus
 
 class Google_Photos_Backup():
-    GOOGLE_API = "https://photoslibrary.googleapis.com/v1"
-    SCOPES = 'https://www.googleapis.com/auth/photoslibrary'
-    ACCESS = 'offline'
-    credentials = ''
-    token = ''
-    project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    backup_path = ''
-    module = 'googlephotos'
-    config = {}
-    cache_path = os.path.join(project_path, 'cache', 'googlephotos.json')
-    cache = {}
-    excluded = []
-
-    def __init__(self, logger):
-        self.config = self.read_config()
-        self.credentials = self.config_get('credentials', None)
-        self.token = self.config_get('token')
-        self.backup_path = self.get_backup_path()
-        self.cache = self.get_cache()
-        self.excluded = self.config_get('exclude', [])
-        self.logger = logger
-
-    def get_cache(self):
-        if not os.path.exists(self.cache_path):
-            return {}
-
-        with open(self.cache_path, 'r') as f:
-            return json.load(f)
-
-    def write_cache(self):
-        with open(self.cache_path, 'w+') as f:
-            f.write(json.dumps(self.cache, indent=4))
-
-    def get_backup_path(self):
-        backup_path = self.config_get('backup_path', 'backups/' + self.module)
-
-        if not backup_path.startswith("/"):
-            backup_path = self.project_path + "/" + backup_path
-
-        if not os.path.exists(backup_path):
-            os.makedirs(backup_path)
-
-        return backup_path
-
-    def request_credentials(self):
-        credentials_str = input('Paste credentials: ')
-        self.logger.write("")
-        self.credentials = json.loads(credentials_str)['installed']
-
-        self.config_set('credentials', self.credentials)
-
-    def request_code(self):
-        # Build auth uri
-        auth_uri = self.credentials['auth_uri'] + "?response_type=code" + "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0]) + "&client_id=" + quote_plus(self.credentials['client_id']) + "&scope=" + quote_plus(self.SCOPES) + "&access_type=" + quote_plus(self.ACCESS) + "&approval_prompt=auto"
-
-        webbrowser.open(auth_uri, new=2)
-
-        self.logger.write("If your browser does not open, go to this website:")
-        self.logger.write(auth_uri)
-        self.logger.write("")
-
-        code = input('Enter code: ')
-
-        self.token = self.request_token(code)
-
-    def read_config(self):
-        with open(self.project_path + '/config.json', 'r') as f:
-            return json.load(f)
-
-    def config_get(self, key, default=""):
-        if not self.module in self.config:
-            self.config[self.module] = {}
-            self.write_config()
-
-        return self.config[self.module][key] if key in self.config[self.module] and self.config[self.module][key] != "" else default
-
-    def config_set(self, key, value):
-        self.config[self.module][key] = value
-        self.write_config()
+	GOOGLE_API = "https://photoslibrary.googleapis.com/v1"
+	SCOPES = 'https://www.googleapis.com/auth/photoslibrary'
+	ACCESS = 'offline'
+	credentials = ''
+	token = ''
+	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+	backup_path = ''
+	module = 'googlephotos'
+	config = {}
+	cache_path = os.path.join(project_path, 'cache', 'googlephotos.json')
+	cache = {}
+	excluded = []
+
+	def __init__(self, logger):
+		self.config = self.read_config()
+		self.credentials = self.config_get('credentials', None)
+		self.token = self.config_get('token')
+		self.backup_path = self.get_backup_path()
+		self.cache = self.get_cache()
+		self.excluded = self.config_get('exclude', [])
+		self.logger = logger
+
+	def get_cache(self):
+		if not os.path.exists(self.cache_path):
+			return {}
+
+		with open(self.cache_path, 'r') as f:
+			return json.load(f)
+
+	def write_cache(self):
+		with open(self.cache_path, 'w+') as f:
+			f.write(json.dumps(self.cache, indent=4))
+
+	def get_backup_path(self):
+		backup_path = self.config_get('backup_path', 'backups/' + self.module)
+
+		if not backup_path.startswith("/"):
+			backup_path = self.project_path + "/" + backup_path
+
+		if not os.path.exists(backup_path):
+			os.makedirs(backup_path)
+
+		return backup_path
+
+	def request_credentials(self):
+		credentials_str = input('Paste credentials: ')
+		self.logger.write("")
+		self.credentials = json.loads(credentials_str)['installed']
+
+		self.config_set('credentials', self.credentials)
+
+	def request_code(self):
+		# Build auth uri
+		auth_uri = self.credentials['auth_uri'] + "?response_type=code" + "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0]) + "&client_id=" + quote_plus(self.credentials['client_id']) + "&scope=" + quote_plus(self.SCOPES) + "&access_type=" + quote_plus(self.ACCESS) + "&approval_prompt=auto"
+
+		webbrowser.open(auth_uri, new=2)
+
+		self.logger.write("If your browser does not open, go to this website:")
+		self.logger.write(auth_uri)
+		self.logger.write("")
+
+		code = input('Enter code: ')
+
+		self.token = self.request_token(code)
+
+	def read_config(self):
+		with open(self.project_path + '/config.json', 'r') as f:
+			return json.load(f)
+
+	def config_get(self, key, default=""):
+		if not self.module in self.config:
+			self.config[self.module] = {}
+			self.write_config()
+
+		return self.config[self.module][key] if key in self.config[self.module] and self.config[self.module][key] != "" else default
+
+	def config_set(self, key, value):
+		self.config[self.module][key] = value
+		self.write_config()
 
-    def write_config(self):
-        with open(self.project_path + '/config.json', 'w') as f:
-            f.write(json.dumps(self.config, indent=4))
+	def write_config(self):
+		with open(self.project_path + '/config.json', 'w') as f:
+			f.write(json.dumps(self.config, indent=4))
 
-    def execute_request(self, url, headers={}, params={}, method="GET", retry=False):
-        if "access_token" in self.token:
-            # Set Authorization-Header
-            auth_header = {
-                'Authorization': 'Bearer {}'.format(self.token['access_token'])
-            }
-            headers.update(auth_header)
+	def execute_request(self, url, headers={}, params={}, method="GET", retry=False):
+		if "access_token" in self.token:
+			# Set Authorization-Header
+			auth_header = {
+				'Authorization': 'Bearer {}'.format(self.token['access_token'])
+			}
+			headers.update(auth_header)
 
-        # Execute request
-        if method == 'GET':
-            res = requests.get(url, headers=headers, params=params)
-        elif method == 'POST':
-            res = requests.post(url, headers=headers, data=params)
-        elif method == 'HEAD':
-            res = requests.head(url, headers=headers)
+		# Execute request
+		if method == 'GET':
+			res = requests.get(url, headers=headers, params=params)
+		elif method == 'POST':
+			res = requests.post(url, headers=headers, data=params)
+		elif method == 'HEAD':
+			res = requests.head(url, headers=headers)
 
-        if res.status_code == 401:
-            # Token expired
-            if not retry:
-                self.token = self.request_token()
-                return self.execute_request(url, headers, params, method, True)
-            else:
-                raise Exception("Failed to refresh token")
+		if res.status_code == 401:
+			# Token expired
+			if not retry:
+				self.token = self.request_token()
+				return self.execute_request(url, headers, params, method, True)
+			else:
+				raise Exception("Failed to refresh token")
 
-        body = res.json() if method != 'HEAD' else None
+		body = res.json() if method != 'HEAD' else None
 
-        return {'status': res.status_code, 'headers': res.headers, 'body': body}
+		return {'status': res.status_code, 'headers': res.headers, 'body': body}
 
-    def backup(self):
-        self.logger.write("")
-        self.logger.write("### Backup Google Photos ###")
-        self.logger.write("")
+	def backup(self):
+		self.logger.write("")
+		self.logger.write("### Backup Google Photos ###")
+		self.logger.write("")
 
-        if not self.credentials:
-            self.request_credentials()
+		if not self.credentials:
+			self.request_credentials()
 
-        if not self.token:
-            self.request_code()
+		if not self.token:
+			self.request_code()
 
-        try:
-            self.logger.write("Getting albums")
-            albums = self.get_albums()
+		try:
+			self.logger.write("Getting albums")
+			albums = self.get_albums()
 
-            for album in albums:
-                if self.check_if_excluded(album['title']):
-                    self.logger.write(album['title'] + " | excluded")
-                else:
-                    self.logger.write(album['title'])
+			for album in albums:
+				if self.check_if_excluded(album['title']):
+					self.logger.write(album['title'] + " | excluded")
+				else:
+					self.logger.write(album['title'])
 
-                    self.get_album_contents(album['id'], album['title'])
+					self.get_album_contents(album['id'], album['title'])
 
-            self.logger.write("Finished Google Photos backup")
-        except KeyboardInterrupt:
-            self.logger.write("Interrupted")
-        finally:
-            self.write_cache()
+			self.logger.write("Finished Google Photos backup")
+		except KeyboardInterrupt:
+			self.logger.write("Interrupted")
+		finally:
+			self.write_cache()
 
-    def check_if_excluded(self, name):
-        for e in self.excluded:
-            if re.match(e, name):
-                return True
+	def check_if_excluded(self, name):
+		for e in self.excluded:
+			if re.match(e, name):
+				return True
 
-        return False
+		return False
 
-    def get_albums(self, pageToken=""):
-        params = {
-            "pageSize": "50",
-        }
+	def get_albums(self, pageToken=""):
+		params = {
+			"pageSize": "50",
+		}
 
-        if pageToken:
-            params['pageToken'] = pageToken
+		if pageToken:
+			params['pageToken'] = pageToken
 
-        res = self.execute_request(self.GOOGLE_API + "/albums", {}, params)
+		res = self.execute_request(self.GOOGLE_API + "/albums", {}, params)
 
-        albums = res['body']['albums']
+		albums = res['body']['albums']
 
-        if 'nextPageToken' in res['body']:
-            albums.extend(self.get_albums(res['body']['nextPageToken']))
+		if 'nextPageToken' in res['body']:
+			albums.extend(self.get_albums(res['body']['nextPageToken']))
 
-        return albums
+		return albums
 
-    def get_album_contents(self, id, name, pageToken=""):
-        params = {
-            "pageSize": "100",
-            "albumId": id
-        }
+	def get_album_contents(self, id, name, pageToken=""):
+		params = {
+			"pageSize": "100",
+			"albumId": id
+		}
 
-        if pageToken:
-            params['pageToken'] = pageToken
+		if pageToken:
+			params['pageToken'] = pageToken
 
-        res = self.execute_request(self.GOOGLE_API + "/mediaItems:search", {}, params, "POST")
+		res = self.execute_request(self.GOOGLE_API + "/mediaItems:search", {}, params, "POST")
 
-        if 'mediaItems' in res['body']:
-            items = res['body']['mediaItems']
+		if 'mediaItems' in res['body']:
+			items = res['body']['mediaItems']
 
-            result = re.match('([0-9]{4})-', name)
+			result = re.match('([0-9]{4})-', name)
 
-            year = result.group(1) if result else '0000'
+			year = result.group(1) if result else '0000'
 
-            for item in items:
-                path = self.backup_path + "/" + year + "/" + name
-                filename = self.cache[item['id']] if item['id'] in self.cache else ''
-                url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + item['mediaMetadata']['width'] + "-h" + item['mediaMetadata']['height']
+			for item in items:
+				path = self.backup_path + "/" + year + "/" + name
+				filename = self.cache[item['id']] if item['id'] in self.cache else ''
+				url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + item['mediaMetadata']['width'] + "-h" + item['mediaMetadata']['height']
 
-                if 'video' in item['mediaMetadata']:
-                    filename = filename if filename else self.get_video_filename(item)
+				if 'video' in item['mediaMetadata']:
+					filename = filename if filename else self.get_video_filename(item)
 
-                self.download(item['baseUrl'] + url_postfix, item['id'], path, filename, True)
+				self.download(item['baseUrl'] + url_postfix, item['id'], path, filename, True)
 
-        if 'nextPageToken' in res['body']:
-            self.get_album_contents(id, name, res['body']['nextPageToken'])
+		if 'nextPageToken' in res['body']:
+			self.get_album_contents(id, name, res['body']['nextPageToken'])
 
-    def get_video_filename(self, item):
-        res = self.execute_request(item['baseUrl'], {}, {}, "HEAD")
+	def get_video_filename(self, item):
+		res = self.execute_request(item['baseUrl'], {}, {}, "HEAD")
 
-        filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
-        filename, file_extension = os.path.splitext(filename)
+		filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
+		filename, file_extension = os.path.splitext(filename)
 
-        return filename + ".mp4"
+		return filename + ".mp4"
 
-    def download(self, url, id, path, filename="", check_if_exists=False):
-        # Create folder if not exists
-        if not os.path.exists(path):
-            os.makedirs(path)
+	def download(self, url, id, path, filename="", check_if_exists=False):
+		# Create folder if not exists
+		if not os.path.exists(path):
+			os.makedirs(path)
 
-        headers = {
-            'Authorization': 'Bearer {}'.format(self.token['access_token'])
-        }
+		headers = {
+			'Authorization': 'Bearer {}'.format(self.token['access_token'])
+		}
 
-        # Check if file already exists
-        if check_if_exists:
-            if filename:
-                if os.path.isfile(os.path.join(path, filename)):
-                    return
-            else:
-                res = self.execute_request(url, {}, {}, 'HEAD')
+		# Check if file already exists
+		if check_if_exists:
+			if filename:
+				if os.path.isfile(os.path.join(path, filename)):
+					return
+			else:
+				res = self.execute_request(url, {}, {}, 'HEAD')
 
-                if res['status'] != 200:
-                    self.logger.write("Error getting file info")
-                    self.logger.write(str(res['status']) + " | " + str(res['headers']))
-                    return
+				if res['status'] != 200:
+					self.logger.write("Error getting file info")
+					self.logger.write(str(res['status']) + " | " + str(res['headers']))
+					return
 
-                filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
+				filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
 
-                if os.path.isfile(os.path.join(path, filename)):
-                    self.cache[id] = filename
-                    return
+				if os.path.isfile(os.path.join(path, filename)):
+					self.cache[id] = filename
+					return
 
-        # Download file
-        http = urllib3.PoolManager()
-        r = http.request('GET', url, headers=headers, preload_content=False)
+		# Download file
+		http = urllib3.PoolManager()
+		r = http.request('GET', url, headers=headers, preload_content=False)
 
-        if r.status == 200:
-            filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
-            self.cache[id] = filename
-            self.logger.write("    " + filename)
+		if r.status == 200:
+			filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
+			self.cache[id] = filename
+			self.logger.write("    " + filename)
 
-            with open(os.path.join(path, filename), 'wb') as out:
-                while True:
-                    data = r.read(128)
-                    if not data:
-                        break
-                    out.write(data)
+			with open(os.path.join(path, filename), 'wb') as out:
+				while True:
+					data = r.read(128)
+					if not data:
+						break
+					out.write(data)
 
-            r.release_conn()
-        else:
-            self.logger.write("Error downloading")
-            self.logger.write(str(r.status) + " | " + str(r.data))
+			r.release_conn()
+		else:
+			self.logger.write("Error downloading")
+			self.logger.write(str(r.status) + " | " + str(r.data))
 
-    def create_album(self, name):
-        params = {
-            "album": {"title": name}
-        }
-        res = self.execute_request(self.GOOGLE_API + "/albums", {}, json.dumps(params), "POST")
+	def create_album(self, name):
+		params = {
+			"album": {"title": name}
+		}
+		res = self.execute_request(self.GOOGLE_API + "/albums", {}, json.dumps(params), "POST")
 
-    def request_token(self, code=""):
-        if not self.credentials:
-            raise Exception('Could not read credentials')
+	def request_token(self, code=""):
+		if not self.credentials:
+			raise Exception('Could not read credentials')
 
-        if not code and not self.token:
-            raise Exception('Could not read token')
+		if not code and not self.token:
+			raise Exception('Could not read token')
 
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
+		headers = {
+			'Content-Type': 'application/x-www-form-urlencoded'
+		}
 
-        params = {
-            'client_id' 	: self.credentials['client_id'],
-            'client_secret'	: self.credentials['client_secret'],
-            'redirect_uri'	: self.credentials['redirect_uris'][0],
-        }
+		params = {
+			'client_id' 	: self.credentials['client_id'],
+			'client_secret'	: self.credentials['client_secret'],
+			'redirect_uri'	: self.credentials['redirect_uris'][0],
+		}
 
-        if code:
-            params['grant_type'] = 'authorization_code'
-            params['code'] = code
-        else:
-            params['grant_type'] = 'refresh_token'
-            params['refresh_token'] = self.token['refresh_token']
+		if code:
+			params['grant_type'] = 'authorization_code'
+			params['code'] = code
+		else:
+			params['grant_type'] = 'refresh_token'
+			params['refresh_token'] = self.token['refresh_token']
 
-        res = self.execute_request(self.credentials['token_uri'], headers, params, "POST")
+		res = self.execute_request(self.credentials['token_uri'], headers, params, "POST")
 
-        if res['status'] == 200:
-            if self.token:
-                res['body']['refresh_token'] = self.token['refresh_token']
+		if res['status'] == 200:
+			if self.token:
+				res['body']['refresh_token'] = self.token['refresh_token']
 
-            self.config_set('token', res['body'])
-            return res['body']
-        else:
-            raise Exception("Error getting token: " + str(res['body']))
+			self.config_set('token', res['body'])
+			return res['body']
+		else:
+			raise Exception("Error getting token: " + str(res['body']))
 
 if __name__ == "__main__":
-    gp = Google_Photos_Backup()
-    gp.backup()
+	gp = Google_Photos_Backup()
+	gp.backup()
