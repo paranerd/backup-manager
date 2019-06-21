@@ -8,6 +8,7 @@ Currently supported:
 - Github
 - Google Drive
 - Google Photos
+- WordPress
 
 While Github is working "out-of-the-box", Google will need some minor setting up, see below for details
 
