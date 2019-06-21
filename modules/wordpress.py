@@ -84,7 +84,7 @@ class Wordpress_Backup:
 		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"mkdir -p backups/{} && zip -r backups/{}/{}_files.zip {} -x {}/backups/\*\"".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.timestamp, self.timestamp, self.timestamp, self.webroot, self.webroot)
 		subprocess.run([cmd], shell=True)
 
-		# Remove all but the last 4 backups
+		# Remove all but the last 5 backups
 		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"ls -tp -d -1 {}/backups/** | tail -n +5 | xargs -d '\\n' -r rm -r --\"".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.webroot)
 		subprocess.run([cmd], shell=True)
 
