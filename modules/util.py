@@ -3,6 +3,10 @@ import time
 import datetime
 import hashlib
 import smtplib
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import COMMASPACE, formatdate
 
 def create_folder(path):
 	"""
@@ -54,21 +58,39 @@ def get_timestamp(format=False):
 	else:
 		return int(round(time.time() * 1000))
 
-def send_gmail(sender, pwd, recipient, subject, body):
+def send_gmail(send_from, pwd, send_to, subject, text, files=None):
 	"""
-	Send mail using gmail
-	"""
-	recipient = recipient if isinstance(recipient, list) else [recipient]
+	Send E-Mail using GMail
 
-	# Prepare actual message
-	message = "From: {}\nTo: {}\nSubject: {}\n\n{}".format(sender, ", ".join(recipient), subject, body)
+	@param send_from string
+	@param pwd       string
+	@param send_to   list
+	@param subject   string
+	@param text      string
+	@param files     list
+	"""
+	msg = MIMEMultipart()
+	msg['From'] = send_from
+	msg['To'] = COMMASPACE.join(send_to)
+	msg['Date'] = formatdate(localtime=True)
+	msg['Subject'] = subject
+
+	msg.attach(MIMEText(text))
+
+	for f in files or []:
+		with open(f, "rb") as fil:
+			part = MIMEApplication(fil.read(), Name=os.path.basename(f))
+
+		# After the file is closed
+		part['Content-Disposition'] = 'attachment; filename="%s"' % os.path.basename(f)
+		msg.attach(part)
 
 	try:
-		server = smtplib.SMTP("smtp.gmail.com", 587)
-		server.ehlo()
-		server.starttls()
-		server.login(sender, pwd)
-		server.sendmail(sender, recipient, message)
-		server.close()
+		smtp = smtplib.SMTP("smtp.gmail.com", 587)
+		smtp.ehlo()
+		smtp.starttls()
+		smtp.login(send_from, pwd)
+		smtp.sendmail(send_from, send_to, msg.as_string())
+		smtp.close()
 	except:
-		print("failed to send mail")
+		print("Failed to send mail")

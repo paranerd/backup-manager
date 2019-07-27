@@ -75,4 +75,4 @@ if __name__ == "__main__":
 		wp.backup()
 
 	if config.get('general', 'mail_user') and config.get('general', 'mail_pass'):
-		util.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), config.get('general', 'mail_user'), "Backup Log", logger.get())
+		util.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), [config.get('general', 'mail_user')], "Backup My Accounts", "Backup complete.", [logger.get_path()])
