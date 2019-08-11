@@ -14,11 +14,10 @@ from . import config
 class Github_Backup:
 	username = ""
 	token = ""
-	backup_path = ''
 	GITHUB_API = "https://api.github.com"
 	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 	module = 'github'
-	backup_path = ''
+	backup_path = ""
 
 	def __init__(self, logger):
 		self.backup_path = self.get_backup_path()
