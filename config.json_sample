@@ -1,0 +1,25 @@
+{
+    "general": {},
+    "wordpress": {
+        "ssh_host": "",
+        "db_name": "",
+        "db_host": "",
+        "webroot": ".",
+        "backup_path": "",
+        "ssh_pass": "",
+        "ssh_user": "",
+        "db_pass": "",
+        "db_user": ""
+    },
+    "googlephotos": {
+        "exclude": [],
+        "backup_path": ""
+    },
+    "github": {
+        "backup_path": ""
+    },
+    "googledrive": {
+        "exclude": [],
+        "backup_path": ""
+    }
+}
