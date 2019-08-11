@@ -92,6 +92,9 @@ class Wordpress_Backup:
 		cmd = "sshpass -p {} rsync -a -e ssh {}@{}:{}/backups/ {}".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.webroot, self.backup_path)
 		subprocess.run([cmd], shell=True)
 
+		# Add list of backed up files to log
+		self.log_filelist()
+
 	def log_filelist(self):
 		"""
 		Add files in backup to log
