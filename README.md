@@ -18,6 +18,7 @@ sudo apt install python3 python3-urllib3 sshpass
 ```
 
 ## Configuration
+- Renaming config.json_sample to config.json
 - Setting a backup path
 
     By default, files will be backed up to the backups/-folder within the project's root
