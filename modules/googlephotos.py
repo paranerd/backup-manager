@@ -6,6 +6,8 @@ import webbrowser
 import urllib3
 from urllib.parse import urlencode, quote_plus
 
+from . import config
+
 class Google_Photos_Backup():
 	GOOGLE_API = "https://photoslibrary.googleapis.com/v1"
 	SCOPES = 'https://www.googleapis.com/auth/photoslibrary'
@@ -15,18 +17,16 @@ class Google_Photos_Backup():
 	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 	backup_path = ''
 	module = 'googlephotos'
-	config = {}
 	cache_path = os.path.join(project_path, 'cache', 'googlephotos.json')
 	cache = {}
 	excluded = []
 
 	def __init__(self, logger):
-		self.config = self.read_config()
-		self.credentials = self.config_get('credentials', None)
-		self.token = self.config_get('token')
+		self.credentials = config.get('credentials', None)
+		self.token = config.get('token')
 		self.backup_path = self.get_backup_path()
 		self.cache = self.get_cache()
-		self.excluded = self.config_get('exclude', [])
+		self.excluded = config.get('exclude', [])
 		self.logger = logger
 
 	def get_cache(self):
@@ -41,7 +41,7 @@ class Google_Photos_Backup():
 			f.write(json.dumps(self.cache, indent=4))
 
 	def get_backup_path(self):
-		backup_path = self.config_get('backup_path', 'backups/' + self.module)
+		backup_path = config.get('backup_path', 'backups/' + self.module)
 
 		if not backup_path.startswith("/"):
 			backup_path = self.project_path + "/" + backup_path
@@ -56,7 +56,7 @@ class Google_Photos_Backup():
 		self.logger.write("")
 		self.credentials = json.loads(credentials_str)['installed']
 
-		self.config_set('credentials', self.credentials)
+		config.set('credentials', self.credentials)
 
 	def request_code(self):
 		# Build auth uri
@@ -71,25 +71,6 @@ class Google_Photos_Backup():
 		code = input('Enter code: ')
 
 		self.token = self.request_token(code)
-
-	def read_config(self):
-		with open(self.project_path + '/config.json', 'r') as f:
-			return json.load(f)
-
-	def config_get(self, key, default=""):
-		if not self.module in self.config:
-			self.config[self.module] = {}
-			self.write_config()
-
-		return self.config[self.module][key] if key in self.config[self.module] and self.config[self.module][key] != "" else default
-
-	def config_set(self, key, value):
-		self.config[self.module][key] = value
-		self.write_config()
-
-	def write_config(self):
-		with open(self.project_path + '/config.json', 'w') as f:
-			f.write(json.dumps(self.config, indent=4))
 
 	def execute_request(self, url, headers={}, params={}, method="GET", retry=False):
 		if "access_token" in self.token:
@@ -296,7 +277,7 @@ class Google_Photos_Backup():
 			if self.token:
 				res['body']['refresh_token'] = self.token['refresh_token']
 
-			self.config_set('token', res['body'])
+			config.set('token', res['body'])
 			return res['body']
 		else:
 			raise Exception("Error getting token: " + str(res['body']))

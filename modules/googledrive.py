@@ -7,6 +7,7 @@ import urllib3
 from urllib.parse import urlencode, quote_plus
 
 from . import util
+from . import config
 
 class Google_Drive_Backup():
 	GOOGLE_API = "https://www.googleapis.com/drive/v3/files"
@@ -17,18 +18,16 @@ class Google_Drive_Backup():
 	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 	backup_path = ''
 	module = 'googledrive'
-	config = {}
 
 	def __init__(self, logger):
-		self.config = self.read_config()
-		self.credentials = self.config_get('credentials', None)
-		self.token = self.config_get('token')
-		self.exclude = self.config_get('exclude', [])
+		self.credentials = config.get('credentials', None)
+		self.token = config.get('token')
+		self.exclude = config.get('exclude', [])
 		self.backup_path = self.get_backup_path()
 		self.logger = logger
 
 	def get_backup_path(self):
-		backup_path = self.config_get('backup_path', 'backups/' + self.module)
+		backup_path = config.get('backup_path', 'backups/' + self.module)
 
 		if not backup_path.startswith("/"):
 			backup_path = self.project_path + "/" + backup_path
@@ -43,7 +42,7 @@ class Google_Drive_Backup():
 		self.logger.write("")
 		self.credentials = json.loads(credentials_str)['installed']
 
-		self.config_set('credentials', self.credentials)
+		config.set('credentials', self.credentials)
 
 	def request_code(self):
 		# Build auth uri
@@ -58,25 +57,6 @@ class Google_Drive_Backup():
 		code = input('Enter code: ')
 
 		self.token = self.request_token(code)
-
-	def read_config(self):
-		with open(self.project_path + '/config.json', 'r') as f:
-			return json.load(f)
-
-	def config_get(self, key, default=""):
-		if not self.module in self.config:
-			self.config[self.module] = {}
-			self.write_config()
-
-		return self.config[self.module][key] if key in self.config[self.module] and self.config[self.module][key] != "" else default
-
-	def config_set(self, key, value):
-		self.config[self.module][key] = value
-		self.write_config()
-
-	def write_config(self):
-		with open(self.project_path + '/config.json', 'w') as f:
-			f.write(json.dumps(self.config, indent=4))
 
 	def execute_request(self, url, headers={}, params={}, method="GET", retry=False):
 		if "access_token" in self.token:
@@ -132,7 +112,7 @@ class Google_Drive_Backup():
 			if self.token:
 				res['body']['refresh_token'] = self.token['refresh_token']
 
-			self.config_set('token', res['body'])
+			config.set('token', res['body'])
 			return res['body']
 		else:
 			raise Exception("Error getting token: " + str(res['body']))
