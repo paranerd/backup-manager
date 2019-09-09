@@ -89,7 +89,7 @@ class Wordpress_Backup:
 		subprocess.run([cmd], shell=True)
 
 		# Pull backups
-		cmd = "sshpass -p {} rsync -a -e ssh {}@{}:{}/backups/ {}".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.webroot, self.backup_path)
+		cmd = "sshpass -p {} rsync -a --delete -e ssh {}@{}:{}/backups/ {}".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.webroot, self.backup_path)
 		subprocess.run([cmd], shell=True)
 
 		# Add list of backed up files to log

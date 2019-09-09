@@ -20,14 +20,14 @@ class Google_Drive_Backup():
 	module = 'googledrive'
 
 	def __init__(self, logger):
-		self.credentials = config.get('credentials', None)
-		self.token = config.get('token')
-		self.exclude = config.get('exclude', [])
+		self.credentials = config.get(self.module, 'credentials', None)
+		self.token = config.get(self.module, 'token')
+		self.exclude = config.get(self.module, 'exclude', [])
 		self.backup_path = self.get_backup_path()
 		self.logger = logger
 
 	def get_backup_path(self):
-		backup_path = config.get('backup_path', 'backups/' + self.module)
+		backup_path = config.get(self.module, 'backup_path', 'backups/' + self.module)
 
 		if not backup_path.startswith("/"):
 			backup_path = self.project_path + "/" + backup_path

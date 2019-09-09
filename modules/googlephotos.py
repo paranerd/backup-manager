@@ -22,11 +22,11 @@ class Google_Photos_Backup():
 	excluded = []
 
 	def __init__(self, logger):
-		self.credentials = config.get('credentials', None)
-		self.token = config.get('token')
+		self.credentials = config.get(self.module, 'credentials', None)
+		self.token = config.get(self.module, 'token')
 		self.backup_path = self.get_backup_path()
 		self.cache = self.get_cache()
-		self.excluded = config.get('exclude', [])
+		self.excluded = config.get(self.module, 'exclude', [])
 		self.logger = logger
 
 	def get_cache(self):
@@ -41,7 +41,7 @@ class Google_Photos_Backup():
 			f.write(json.dumps(self.cache, indent=4))
 
 	def get_backup_path(self):
-		backup_path = config.get('backup_path', 'backups/' + self.module)
+		backup_path = config.get(self.module, 'backup_path', 'backups/' + self.module)
 
 		if not backup_path.startswith("/"):
 			backup_path = self.project_path + "/" + backup_path
