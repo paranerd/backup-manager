@@ -7,27 +7,99 @@ import urllib3
 from urllib.parse import urlencode, quote_plus
 
 from . import config
+from . import util
+from .log import Logger
 
 class Google_Photos_Backup():
-	GOOGLE_API = "https://photoslibrary.googleapis.com/v1"
-	SCOPES = 'https://www.googleapis.com/auth/photoslibrary'
-	ACCESS = 'offline'
+	API_URL = "https://photoslibrary.googleapis.com/v1"
 	credentials = ''
 	token = ''
-	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 	backup_path = ''
-	module = 'googlephotos'
-	cache_path = os.path.join(project_path, 'cache', 'googlephotos.json')
+	cache_path = os.path.join(util.get_project_path(), 'cache', 'googlephotos.json')
 	cache = {}
 	excluded = []
 
-	def __init__(self, logger):
-		self.credentials = config.get(self.module, 'credentials', None)
-		self.token = config.get(self.module, 'token')
-		self.backup_path = self.get_backup_path()
+	def __init__(self):
+		"""
+		Constructor
+		"""
+		self.logger = Logger()
+
+	def add(self):
+		"""
+		Add Google Photos account
+		"""
+		# Read alias
+		self.alias = input('Alias: ')
+
+		# Check if alias exists
+		while config.exists(self.alias):
+			print("This alias already exists")
+			self.alias = input('Alias: ')
+
+		# Show instructions
+		self.show_instructions()
+
+		credentials_str = input('Paste content of credentials file: ')
+		self.credentials = json.loads(credentials_str)['installed']
+
+		code = self.request_code()
+		token = self.request_token(code)
+
+		# Read backup path
+		backup_path = input('Backup path (optional): ')
+		backup_path = backup_path if backup_path else 'backups/' + self.alias
+
+		# Write config
+		config.set(self.alias, 'type', 'googlephotos')
+		config.set(self.alias, 'credentials', self.credentials)
+		config.set(self.alias, 'token', token)
+		config.set(self.alias, 'backup_path', backup_path)
+
+		print("Added.")
+
+	def backup(self, alias):
+		self.logger.write("")
+		self.logger.write("### Backup {} (Google Photos) ###".format(alias))
+		self.logger.write("")
+
+		self.alias = alias
+		self.credentials = config.get(alias, 'credentials', None)
+		self.token = config.get(alias, 'token')
+		self.backup_path = util.get_backup_path(alias)
 		self.cache = self.get_cache()
-		self.excluded = config.get(self.module, 'exclude', [])
-		self.logger = logger
+		self.excluded = config.get(alias, 'exclude', [])
+
+		try:
+			self.logger.write("Getting albums")
+			albums = self.get_albums()
+
+			for album in albums:
+				if self.check_if_excluded(album['title']):
+					self.logger.write(album['title'] + " | excluded")
+				else:
+					self.logger.write(album['title'])
+
+					self.get_album_content(album['id'], album['title'])
+
+			self.logger.write("Finished Google Photos backup")
+		except KeyboardInterrupt:
+			self.logger.write("Interrupted")
+		finally:
+			self.write_cache()
+
+	def show_instructions(self):
+		print()
+		print('How to get credentials:')
+		print('Go to https://console.developers.google.com/')
+		print('Create a project')
+		print('On the left select "Dashboard"')
+		print('Select "Activate APIs and services"')
+		print('Activate Photos Library API')
+		print('On the left select "Credentials"')
+		print('Create an OAuth-Client-ID for "Others"')
+		print('Download the generated credentials json')
+		print()
 
 	def get_cache(self):
 		if not os.path.exists(self.cache_path):
@@ -40,37 +112,31 @@ class Google_Photos_Backup():
 		with open(self.cache_path, 'w+') as f:
 			f.write(json.dumps(self.cache, indent=4))
 
-	def get_backup_path(self):
-		backup_path = config.get(self.module, 'backup_path', 'backups/' + self.module)
+	def build_auth_uri(self):
+		auth_uri = self.credentials['auth_uri']
+		auth_uri += "?response_type=code"
+		auth_uri += "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0])
+		auth_uri += "&client_id=" + quote_plus(self.credentials['client_id'])
+		auth_uri += "&scope=https://www.googleapis.com/auth/photoslibrary"
+		auth_uri += "&access_type=offline"
+		auth_uri += "&approval_prompt=auto"
 
-		if not backup_path.startswith("/"):
-			backup_path = self.project_path + "/" + backup_path
-
-		if not os.path.exists(backup_path):
-			os.makedirs(backup_path)
-
-		return backup_path
-
-	def request_credentials(self):
-		credentials_str = input('Paste credentials: ')
-		self.logger.write("")
-		self.credentials = json.loads(credentials_str)['installed']
-
-		config.set('credentials', self.credentials)
+		return auth_uri
 
 	def request_code(self):
 		# Build auth uri
-		auth_uri = self.credentials['auth_uri'] + "?response_type=code" + "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0]) + "&client_id=" + quote_plus(self.credentials['client_id']) + "&scope=" + quote_plus(self.SCOPES) + "&access_type=" + quote_plus(self.ACCESS) + "&approval_prompt=auto"
+		auth_uri = self.build_auth_uri()
 
+		# Try opening in browser
 		webbrowser.open(auth_uri, new=2)
 
-		self.logger.write("If your browser does not open, go to this website:")
-		self.logger.write(auth_uri)
-		self.logger.write("")
+		print()
+		print("If your browser does not open, go to this website:")
+		print(auth_uri)
+		print()
 
-		code = input('Enter code: ')
-
-		self.token = self.request_token(code)
+		# Return code
+		return input('Enter code: ')
 
 	def execute_request(self, url, headers={}, params={}, method="GET", retry=False):
 		if "access_token" in self.token:
@@ -100,35 +166,6 @@ class Google_Photos_Backup():
 
 		return {'status': res.status_code, 'headers': res.headers, 'body': body}
 
-	def backup(self):
-		self.logger.write("")
-		self.logger.write("### Backup Google Photos ###")
-		self.logger.write("")
-
-		if not self.credentials:
-			self.request_credentials()
-
-		if not self.token:
-			self.request_code()
-
-		try:
-			self.logger.write("Getting albums")
-			albums = self.get_albums()
-
-			for album in albums:
-				if self.check_if_excluded(album['title']):
-					self.logger.write(album['title'] + " | excluded")
-				else:
-					self.logger.write(album['title'])
-
-					self.get_album_contents(album['id'], album['title'])
-
-			self.logger.write("Finished Google Photos backup")
-		except KeyboardInterrupt:
-			self.logger.write("Interrupted")
-		finally:
-			self.write_cache()
-
 	def check_if_excluded(self, name):
 		for e in self.excluded:
 			if re.match(e, name):
@@ -144,7 +181,7 @@ class Google_Photos_Backup():
 		if pageToken:
 			params['pageToken'] = pageToken
 
-		res = self.execute_request(self.GOOGLE_API + "/albums", {}, params)
+		res = self.execute_request(self.API_URL + "/albums", {}, params)
 
 		albums = res['body']['albums']
 
@@ -153,7 +190,7 @@ class Google_Photos_Backup():
 
 		return albums
 
-	def get_album_contents(self, id, name, pageToken=""):
+	def get_album_content(self, id, name, pageToken=""):
 		params = {
 			"pageSize": "100",
 			"albumId": id
@@ -162,7 +199,7 @@ class Google_Photos_Backup():
 		if pageToken:
 			params['pageToken'] = pageToken
 
-		res = self.execute_request(self.GOOGLE_API + "/mediaItems:search", {}, params, "POST")
+		res = self.execute_request(self.API_URL + "/mediaItems:search", {}, params, "POST")
 
 		if 'mediaItems' in res['body']:
 			items = res['body']['mediaItems']
@@ -182,7 +219,7 @@ class Google_Photos_Backup():
 				self.download(item['baseUrl'] + url_postfix, item['id'], path, filename, True)
 
 		if 'nextPageToken' in res['body']:
-			self.get_album_contents(id, name, res['body']['nextPageToken'])
+			self.get_album_content(id, name, res['body']['nextPageToken'])
 
 	def get_video_filename(self, item):
 		res = self.execute_request(item['baseUrl'], {}, {}, "HEAD")
@@ -245,7 +282,7 @@ class Google_Photos_Backup():
 		params = {
 			"album": {"title": name}
 		}
-		res = self.execute_request(self.GOOGLE_API + "/albums", {}, json.dumps(params), "POST")
+		res = self.execute_request(self.API_URL + "/albums", {}, json.dumps(params), "POST")
 
 	def request_token(self, code=""):
 		if not self.credentials:
@@ -277,7 +314,7 @@ class Google_Photos_Backup():
 			if self.token:
 				res['body']['refresh_token'] = self.token['refresh_token']
 
-			config.set('token', res['body'])
+			config.set(self.alias, 'token', res['body'])
 			return res['body']
 		else:
 			raise Exception("Error getting token: " + str(res['body']))

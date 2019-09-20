@@ -2,21 +2,25 @@ import os
 import datetime
 from . import util
 
+# Get project path
+project_path = util.get_project_path()
+
+# Path to logs folder
+logs_path = os.path.join(project_path, "log")
+
+# Set current log path
+name = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
+path = os.path.join(project_path, "log", name) + ".txt"
+
 class Logger():
 	prepared = ""
-	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-	logs_path = os.path.join(project_path, "log")
-	lock_path = os.path.join(logs_path, "lock")
 
 	def __init__(self):
 		"""
 		Constructor
 		"""
 		# Create logs folder
-		util.create_folder(self.logs_path)
-
-		# Set current log path
-		self.path = self.set_path()
+		util.create_folder(logs_path)
 
 	def prepare(self, msg):
 		"""
@@ -34,22 +38,14 @@ class Logger():
 			self.write(self.prepared)
 			self.prepared = ""
 
-	def set_path(self):
-		"""
-		Set current log path
-
-		@return string
-		"""
-		name = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
-		return os.path.join(self.project_path, "log", name) + ".txt"
-
-	def get_path(self):
+	@staticmethod
+	def get_path():
 		"""
 		Get current log path
 
 		@return string
 		"""
-		return self.path
+		return path
 
 	def write(self, msg):
 		"""
@@ -64,7 +60,7 @@ class Logger():
 		print(msg)
 
 		# Write message to file
-		with open(self.path, "a") as logfile:
+		with open(path, "a") as logfile:
 			logfile.write(msg + "\n")
 
 	def get(self):
@@ -73,5 +69,5 @@ class Logger():
 
 		@return string
 		"""
-		with open(self.path, "r") as file:
+		with open(path, "r") as file:
 			return file.read()

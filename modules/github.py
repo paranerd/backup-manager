@@ -10,57 +10,74 @@ import os
 import re
 
 from . import config
+from . import util
+from .log import Logger
 
 class Github_Backup:
 	username = ""
 	token = ""
-	GITHUB_API = "https://api.github.com"
-	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-	module = 'github'
+	API_URL = "https://api.github.com"
 	backup_path = ""
 
-	def __init__(self, logger):
-		self.backup_path = self.get_backup_path()
-		self.logger = logger
+	def __init__(self):
+		"""
+		Constructor
+		"""
+		self.logger = Logger()
 
-	def get_backup_path(self):
-		backup_path = config.get(self.module, 'backup_path', 'backups/' + self.module)
+	def add(self):
+		"""
+		Add GitHub account
+		"""
+		# Read alias
+		alias = input('Alias: ')
 
-		if not backup_path.startswith("/"):
-			backup_path = self.project_path + "/" + backup_path
+		# Check if alias exists
+		while config.exists(alias):
+			print("This alias already exists")
+			alias = input('Alias: ')
 
-		if not os.path.exists(backup_path):
-			os.makedirs(backup_path)
+		# Read username
+		username = input('Github username: ')
 
-		return backup_path
+		# Read password
+		password = getpass.getpass('Github password: ')
 
-	def get_token(self):
-		self.logger.write("Getting token...")
-		password = getpass.getpass('Github password (' + self.username + '): ')
+		# Read backup path
+		backup_path = input('Backup path (optional): ')
+		backup_path = backup_path if backup_path else 'backups/' + alias
 
-		res = requests.post(self.GITHUB_API + "/authorizations", auth = (self.username, password), data = json.dumps({'note': 'backup2', 'note_url': 'backup_my_accounts2'}))
+		try:
+			# Obtain token
+			token = self.get_token(username, password)
+		except Exception as e:
+			raise Exception("Could not obtain access token. Please check your credentials.")
 
-		if res.status_code == 201:
-			return res.json()['token']
+		# Write config
+		config.set(alias, 'type', 'github')
+		config.set(alias, 'username', username)
+		config.set(alias, 'token', token)
+		config.set(alias, 'backup_path', backup_path)
 
-		raise Exception("Error obtaining token: " + str(res.json()))
+		print("Added.")
 
-	def backup(self):
+	def backup(self, alias):
+		"""
+		Main worker
+
+		@param string alias
+		"""
 		self.logger.write("")
-		self.logger.write("### Backup Github ###")
+		self.logger.write("### Backup {} (GitHub) ###".format(alias))
 		self.logger.write("")
 
 		try:
-			self.username = config.get(self.module, 'username')
-			self.token = config.get(self.module, 'token')
+			self.username = config.get(alias, 'username')
+			self.token = config.get(alias, 'token')
+			self.backup_path = util.get_backup_path(alias)
 
-			if not self.username:
-				self.username = input('Github username: ')
-				config.set(self.module, 'username', self.username)
-
-			if not self.token:
-				self.token = self.get_token()
-				config.set(self.module, 'token', self.token)
+			if not self.username or not self.token:
+				raise Exception("Username and/or Token not set")
 
 			repositories = self.get_repositories()
 
@@ -77,9 +94,32 @@ class Github_Backup:
 			self.logger.flush()
 			self.logger.write(e)
 
+	def get_token(self, username, password):
+		"""
+		Get auth token
+
+		@param string username
+		@param string password
+		@return string
+		"""
+		print("Getting token...")
+
+		res = requests.post(self.API_URL + "/authorizations", auth = (username, password), data = json.dumps({'note': 'backup_debug', 'note_url': 'backup_my_accounts_debug'}))
+
+		if res.status_code != 201:
+			raise Exception("Error obtaining token: " + str(res.json()))
+
+		return res.json()['token']
+
 	def get_repositories(self, page_url=""):
+		"""
+		Get all repositories
+
+		@param string page_url
+		@return list
+		"""
 		repositories = []
-		url = page_url if page_url else self.GITHUB_API + "/users/" + self.username + "/repos"
+		url = page_url if page_url else self.API_URL + "/users/" + self.username + "/repos"
 		res = requests.get(url, auth=(self.username,self.token))
 
 		if res.status_code == 200:
@@ -93,6 +133,12 @@ class Github_Backup:
 		return repositories
 
 	def get_current_version(self, repository):
+		"""
+		Get current repository version from latest tag
+
+		@param dict repository
+		@return dict
+		"""
 		res = requests.get(repository['tags_url'], auth=(self.username,self.token)).json()
 
 		version = res[0]['name'] if len(res) > 0 and 'name' in res[0] else '1.0'
@@ -101,16 +147,37 @@ class Github_Backup:
 		return {'number': version, 'url': url}
 
 	def get_current_tag(self, repository):
+		"""
+		Get lastest tag from repository
+
+		@param string repository
+		@return string
+		"""
 		tags = requests.get(repository['tags_url'], auth=(self.username, self.token)).json()
 
 		return tags[0]['name'] if len(tags) > 0 and 'name' in tags[0] else '1.0'
 
 	def delete_older_versions(self, path, repo_name):
+		"""
+		Remove older version of repository
+
+		@param string path
+		@param string repo_name
+		"""
 		for f in os.listdir(path):
 			if re.search('^' + repo_name + '-[0-9.]+zip', f):
 				os.remove(os.path.join(self.backup_path, f))
 
 	def download(self, url, repo_name, path, filename, check_if_exists=False):
+		"""
+		Download repository as zip file
+
+		@param string url
+		@param string repo_name
+		@param string path
+		@param string filename
+		@param string check_if_exists
+		"""
 		# Check if file exists
 		if check_if_exists and os.path.isfile(os.path.join(path, filename)):
 			return
@@ -118,6 +185,7 @@ class Github_Backup:
 		# Delete older version
 		self.delete_older_versions(path, repo_name)
 
+		# Actually download the file
 		passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
 		passman.add_password(None, url, self.username, self.token)
 		authhandler = urllib.request.HTTPBasicAuthHandler(passman)
@@ -129,7 +197,3 @@ class Github_Backup:
 		with urllib.request.urlopen(url) as response, open(os.path.join(path, filename), 'wb') as out_file:
 			data = response.read()
 			out_file.write(data)
-
-if __name__ == "__main__":
-	g = Github_Backup()
-	g.backup()

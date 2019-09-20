@@ -1,57 +1,52 @@
+import os
+import sys
 import subprocess
 import re
 import datetime
 
 from . import util
 from . import config
+from .log import Logger
 
 class Wordpress_Backup:
-	module = 'wordpress'
+	keep_backups = 2
 
-	def __init__(self, logger):
+	def __init__(self):
 		self.timestamp = self.get_timestring()
-		self.logger = logger
+		self.logger = Logger()
 
-		self.webroot = config.get(self.module, 'webroot')
-		self.backup_path = config.get(self.module, 'backup_path')
-		self.ssh_user = config.get(self.module, 'ssh_user')
-		self.ssh_host = config.get(self.module, 'ssh_host')
-		self.ssh_pass = config.get(self.module, 'ssh_pass')
-		self.db_name = config.get(self.module, 'db_name')
-		self.db_user = config.get(self.module, 'db_user')
-		self.db_host = config.get(self.module, 'db_host')
-		self.db_pass = config.get(self.module, 'db_pass')
+	def add(self):
+		# Read alias
+		alias = input('Alias: ')
 
-		if not self.webroot:
-			self.webroot = input("Webroot: ")
-			config.set(self.module, 'webroot', self.webroot)
-		if not self.backup_path:
-			self.backup_path = input("Backup path: ")
-			config.set(self.module, 'backup_path', self.backup_path)
-		if not self.ssh_user:
-			self.ssh_user = input("SSH user: ")
-			config.set(self.module, 'ssh_user', self.ssh_user)
-		if not self.ssh_host:
-			self.ssh_host = input("SSH host: ")
-			config.set(self.module, 'ssh_host', self.ssh_host)
-		if not self.ssh_pass:
-			self.ssh_pass = input("SSH pass: ")
-			config.set(self.module, 'ssh_pass', self.ssh_pass)
-		if not self.db_name:
-			self.db_name = input("Database name: ")
-			config.set(self.module, 'db_name', self.db_name)
-		if not self.db_user:
-			self.db_user = input("Database user: ")
-			config.set(self.module, 'db_user', self.db_user)
-		if not self.db_host:
-			self.db_host = input("Database host: ")
-			config.set(self.module, 'db_host', self.db_host)
-		if not self.db_pass:
-			self.db_pass = input("Database password: ")
-			config.set(self.module, 'db_pass', self.db_pass)
+		# Check if alias exists
+		while config.exists(alias):
+			print("This alias already exists")
+			alias = input('Alias: ')
 
-		self.ssh_pass = self.escape_string(self.ssh_pass)
-		self.db_pass = self.escape_string(self.db_pass)
+		webroot = input("Webroot: ")
+		backup_path = input('Backup path (optional): ')
+		backup_path = backup_path if backup_path else 'backups/' + alias
+		ssh_user = input("SSH user: ")
+		ssh_host = input("SSH host: ")
+		ssh_pass = input("SSH pass: ")
+		db_name = input("Database name: ")
+		db_user = input("Database user: ")
+		db_host = input("Database host: ")
+		db_pass = input("Database password: ")
+
+		config.set(alias, 'type', 'wordpress')
+		config.set(alias, 'webroot', webroot)
+		config.set(alias, 'backup_path', backup_path)
+		config.set(alias, 'ssh_user', ssh_user)
+		config.set(alias, 'ssh_host', ssh_host)
+		config.set(alias, 'ssh_pass', ssh_pass)
+		config.set(alias, 'db_name', db_name)
+		config.set(alias, 'db_user', db_user)
+		config.set(alias, 'db_host', db_host)
+		config.set(alias, 'db_pass', db_pass)
+
+		print("Added.")
 
 	def get_timestring(self):
 		"""
@@ -70,34 +65,70 @@ class Wordpress_Backup:
 		"""
 		return re.escape(string)
 
-	def backup(self):
+	def backup(self, alias):
 		"""
 		Main worker
+
+		@param string alias
 		"""
-		self.logger.write('### Backup WordPress ###')
+		self.logger.write('### Backup {} (WordPress) ###'.format(alias))
 
-		# Backup the database into that folder
-		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"mkdir -p backups/{} && mysqldump {} --add-drop-table -h {} -u {} -p{} > backups/{}/{}_database.sql\"".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.timestamp, self.db_name, self.db_host, self.db_user, self.db_pass, self.timestamp, self.timestamp)
+		# Read config
+		webroot = config.get(alias, 'webroot')
+		backup_path = config.get(alias, 'backup_path')
+		ssh_user = config.get(alias, 'ssh_user')
+		ssh_host = config.get(alias, 'ssh_host')
+		ssh_pass = config.get(alias, 'ssh_pass')
+		db_name = config.get(alias, 'db_name')
+		db_user = config.get(alias, 'db_user')
+		db_host = config.get(alias, 'db_host')
+		db_pass = config.get(alias, 'db_pass')
+
+		# Check if we have all necessary information
+		if not webroot or not backup_path or not ssh_user or not ssh_host \
+			or not ssh_pass or not db_name or not db_user or not db_host or not db_pass:
+			raise Exception("Config corrupted")
+
+		# Sanitize passwords
+		ssh_pass = self.escape_string(ssh_pass)
+		db_pass = self.escape_string(db_pass)
+
+		# Create backup folder
+		destination = util.create_folder(os.path.join(backup_path, self.timestamp))
+
+		# Dump MySQL
+		cmd = "mysqldump {} --add-drop-table -h {} -u {} -p{} > {}/{}.sql".format(db_name, db_host, db_user, db_pass, destination, self.timestamp)
 		subprocess.run([cmd], shell=True)
 
-		# Backup all the files into that folder (excluding the backups)
-		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"mkdir -p backups/{} && zip -r backups/{}/{}_files.zip {} -x {}/backups/\*\"".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.timestamp, self.timestamp, self.timestamp, self.webroot, self.webroot)
-		subprocess.run([cmd], shell=True)
-
-		# Remove all but the last 5 backups
-		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"ls -tp -d -1 {}/backups/** | tail -n +5 | xargs -d '\\n' -r rm -r --\"".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.webroot)
+		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"zip -r {}/{}.zip {}\"".format(ssh_pass, ssh_user, ssh_host, webroot, self.timestamp, webroot)
 		subprocess.run([cmd], shell=True)
 
 		# Pull backups
-		cmd = "sshpass -p {} rsync -a --delete -e ssh {}@{}:{}/backups/ {}".format(self.ssh_pass, self.ssh_user, self.ssh_host, self.webroot, self.backup_path)
+		cmd = "sshpass -p {} rsync --remove-source-files -a -e ssh {}@{}:{}/{}.zip {}/".format(ssh_pass, ssh_user, ssh_host, webroot, self.timestamp, destination)
 		subprocess.run([cmd], shell=True)
 
-		# Add list of backed up files to log
-		self.log_filelist()
+		# Remove old backups
+		self.remove_old_backups(backup_path)
 
-	def log_filelist(self):
+		# Add list of backed up files to log
+		self.log_filelist(backup_path)
+
+	def remove_old_backups(self, backup_path):
+		"""
+		Remove all but the latest x backups
+		"""
+		folders = os.listdir(backup_path)
+		folders = [os.path.join(backup_path, f) for f in folders]
+		folders.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+
+		for folder in folders[self.keep_backups:]:
+			util.remove_folder(folder)
+
+	def log_filelist(self, backup_path):
 		"""
 		Add files in backup to log
+
+		@param string backup_path
 		"""
-		for file in os.listdir(self.backup_path):
+		for file in os.listdir(backup_path):
 			self.logger.write(file)

@@ -8,55 +8,90 @@ from urllib.parse import urlencode, quote_plus
 
 from . import util
 from . import config
+from .log import Logger
 
 class Google_Drive_Backup():
-	GOOGLE_API = "https://www.googleapis.com/drive/v3/files"
-	SCOPES = 'https://www.googleapis.com/auth/drive'
-	ACCESS = 'offline'
+	API_URL = "https://www.googleapis.com/drive/v3/files"
 	credentials = ''
 	token = ''
-	project_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 	backup_path = ''
-	module = 'googledrive'
+	alias = ''
 
-	def __init__(self, logger):
-		self.credentials = config.get(self.module, 'credentials', None)
-		self.token = config.get(self.module, 'token')
-		self.exclude = config.get(self.module, 'exclude', [])
-		self.backup_path = self.get_backup_path()
-		self.logger = logger
+	def __init__(self):
+		self.logger = Logger()
 
-	def get_backup_path(self):
-		backup_path = config.get(self.module, 'backup_path', 'backups/' + self.module)
+	def add(self):
+		# Read alias
+		self.alias = input('Alias: ')
 
-		if not backup_path.startswith("/"):
-			backup_path = self.project_path + "/" + backup_path
+		# Check if alias exists
+		while config.exists(self.alias):
+			print("This alias already exists")
+			self.alias = input('Alias: ')
 
-		if not os.path.exists(backup_path):
-			os.makedirs(backup_path)
+		# Show instructions
+		self.show_instructions()
 
-		return backup_path
-
-	def request_credentials(self):
-		credentials_str = input('Paste credentials: ')
-		self.logger.write("")
+		credentials_str = input('Paste content of credentials file: ')
 		self.credentials = json.loads(credentials_str)['installed']
 
-		config.set('credentials', self.credentials)
+		code = self.request_code()
+		token = self.request_token(code)
+
+		# Read backup path
+		backup_path = input('Backup path (optional): ')
+		backup_path = backup_path if backup_path else 'backups/' + self.alias
+
+		config.set(self.alias, 'type', 'googledrive')
+		config.set(self.alias, 'credentials', self.credentials)
+		config.set(self.alias, 'token', token)
+		config.set(self.alias, 'backup_path', backup_path)
+
+		print("Added.")
+
+	def backup(self, alias):
+		self.logger.write("")
+		self.logger.write("### Backup {} (Google Drive) ###".format(alias))
+		self.logger.write("")
+
+		self.alias = alias
+		self.backup_path = util.get_backup_path(alias)
+		self.credentials = config.get(alias, 'credentials', None)
+		self.token = config.get(alias, 'token')
+		self.exclude = config.get(alias, 'exclude', [])
+
+		try:
+			self.get_children()
+
+			self.logger.write("Finished Google Drive backup")
+		except KeyboardInterrupt:
+			self.logger.write("Interrupted")
+
+	def build_auth_uri(self):
+		auth_uri = self.credentials['auth_uri']
+		auth_uri += "?response_type=code"
+		auth_uri += "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0])
+		auth_uri += "&client_id=" + quote_plus(self.credentials['client_id'])
+		auth_uri += "&scope=https://www.googleapis.com/auth/drive"
+		auth_uri += "&access_type=offline"
+		auth_uri += "&approval_prompt=auto"
+
+		return auth_uri
 
 	def request_code(self):
 		# Build auth uri
-		auth_uri = self.credentials['auth_uri'] + "?response_type=code" + "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0]) + "&client_id=" + quote_plus(self.credentials['client_id']) + "&scope=" + quote_plus(self.SCOPES) + "&access_type=" + quote_plus(self.ACCESS) + "&approval_prompt=auto"
+		auth_uri = self.build_auth_uri()
 
+		# Try opening in browser
 		webbrowser.open(auth_uri, new=2)
 
-		self.logger.write("If your browser does not open, go to this website:")
-		self.logger.write(auth_uri)
-		self.logger.write("")
+		print()
+		print("If your browser does not open, go to this website:")
+		print(auth_uri)
+		print()
 
-		code = input('Enter code: ')
-
-		self.token = self.request_token(code)
+		# Return code
+		return input('Enter code: ')
 
 	def execute_request(self, url, headers={}, params={}, method="GET", retry=False):
 		if "access_token" in self.token:
@@ -112,28 +147,23 @@ class Google_Drive_Backup():
 			if self.token:
 				res['body']['refresh_token'] = self.token['refresh_token']
 
-			config.set('token', res['body'])
+			config.set(self.alias, 'token', res['body'])
 			return res['body']
 		else:
 			raise Exception("Error getting token: " + str(res['body']))
 
-	def backup(self):
-		self.logger.write("")
-		self.logger.write("### Backup Google Drive ###")
-		self.logger.write("")
-
-		if not self.credentials:
-			self.request_credentials()
-
-		if not self.token:
-			self.request_code()
-
-		try:
-			self.get_children()
-
-			self.logger.write("Finished Google Drive backup")
-		except KeyboardInterrupt:
-			self.logger.write("Interrupted")
+	def show_instructions(self):
+		print()
+		print('How to get credentials:')
+		print('Go to https://console.developers.google.com/')
+		print('Create a project')
+		print('On the left select "Dashboard"')
+		print('Select "Activate APIs and services"')
+		print('Activate Google Drive API')
+		print('On the left select "Credentials"')
+		print('Create an OAuth-Client-ID for "Others"')
+		print('Download the generated credentials json')
+		print()
 
 	def check_if_excluded(self, path):
 		for e in self.exclude:
@@ -174,7 +204,7 @@ class Google_Drive_Backup():
 		params_str = params_str[:-1].replace(",", "%2C").replace(" ", "+")
 
 		# Send request
-		res = self.execute_request(self.GOOGLE_API + "?" + params_str)
+		res = self.execute_request(self.API_URL + "?" + params_str)
 
 		items = res['body']['files'] if res['status'] == 200 else []
 
@@ -192,11 +222,11 @@ class Google_Drive_Backup():
 				self.get_children(item['id'], parents + [item['name']])
 			# Google Docs
 			elif self.is_type(item, 'document'):
-				url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/pdf"
+				url = self.API_URL + "/" + item['id'] + "/export?mimeType=application/pdf"
 				self.download(url, path, item['name'] + ".pdf", False)
 			# Google Spreadsheets
 			elif self.is_type(item, 'spreadsheet'):
-				url = self.GOOGLE_API + "/" + item['id'] + "/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+				url = self.API_URL + "/" + item['id'] + "/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 				self.download(url, path, item['name'] + ".xlsx", False)
 			# Regular files
 			else:
@@ -204,7 +234,7 @@ class Google_Drive_Backup():
 				checksum_local = util.md5_file(os.path.join(path, item['name']))
 
 				if not checksum_server or checksum_server != checksum_local:
-					url = self.GOOGLE_API + "/" + item['id'] + '?alt=media'
+					url = self.API_URL + "/" + item['id'] + '?alt=media'
 					self.download(url, path, item['name'], False)
 
 			self.logger.flush()
@@ -251,7 +281,3 @@ class Google_Drive_Backup():
 			r.release_conn()
 		else:
 			self.logger.prepare(" (Error downloading: " + str(r.status) + " | " + str(r.data) + ")")
-
-if __name__ == "__main__":
-	gd = Google_Drive_Backup()
-	gd.backup()

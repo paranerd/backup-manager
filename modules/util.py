@@ -1,12 +1,15 @@
 import os
 import time
 import datetime
+import shutil
 import hashlib
 import smtplib
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
+
+from . import config
 
 def create_folder(path):
 	"""
@@ -18,6 +21,14 @@ def create_folder(path):
 	if not os.path.exists(path):
 		os.makedirs(path)
 		return path
+
+def remove_folder(path):
+	"""
+	Remove folder recursively
+
+	@param string path
+	"""
+	shutil.rmtree(path)
 
 def md5(string):
 	"""
@@ -94,3 +105,22 @@ def send_gmail(send_from, pwd, send_to, subject, text, files=None):
 		smtp.close()
 	except:
 		print("Failed to send mail")
+
+def get_project_path():
+	"""
+	Return absolute path of project folder
+
+	@return string
+	"""
+	return os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+def get_backup_path(alias):
+	backup_path = config.get(alias, 'backup_path', 'backups/' + alias)
+
+	if not backup_path.startswith("/"):
+		backup_path = get_project_path() + "/" + backup_path
+
+	if not os.path.exists(backup_path):
+		os.makedirs(backup_path)
+
+	return backup_path
