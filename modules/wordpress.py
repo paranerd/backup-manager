@@ -9,7 +9,7 @@ from . import config
 from .log import Logger
 
 class Wordpress_Backup:
-	keep_backups = 2
+	keep_backups = 5
 
 	def __init__(self):
 		self.timestamp = self.get_timestring()
