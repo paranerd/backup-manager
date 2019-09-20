@@ -128,5 +128,3 @@ if __name__ == "__main__":
 	# Mail log
 	if config.get('general', 'mail_user') and config.get('general', 'mail_pass'):
 		util.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), [config.get('general', 'mail_user')], "Backup My Accounts", "Backup complete.", [Logger.get_path()])
-
-	print("Done root.")
