@@ -119,7 +119,7 @@ if __name__ == "__main__":
 		for alias in aliases:
 			entry = config.get(alias)
 
-			if entry:
+			if entry and alias not "general":
 				module = type_to_module(entry['type'])()
 				module.backup(alias)
 	else:
