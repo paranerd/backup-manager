@@ -9,8 +9,8 @@ import json
 import os
 import re
 
-from . import config
 from . import util
+from . import config
 from .log import Logger
 
 class Github_Backup:

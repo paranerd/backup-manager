@@ -1,11 +1,14 @@
 import os
 import dropbox
 
-from . import config
 from . import util
+from . import config
+from . import cache
 from .log import Logger
 
 class Dropbox_Backup:
+	alias = ''
+
 	def __init__(self):
 		self.logger = Logger()
 
@@ -46,6 +49,7 @@ class Dropbox_Backup:
 		self.logger.write("")
 
 		try:
+			self.alias = alias
 			token = config.get(alias, 'token')
 			self.dbx = dropbox.Dropbox(token)
 			self.backup_path = config.get(alias, 'backup_path')
@@ -76,7 +80,12 @@ class Dropbox_Backup:
 			else:
 				destination = os.path.join(self.backup_path, entry.path_display.strip('/'))
 				self.logger.write(entry.path_display)
-				self.download(entry.path_display, destination)
+
+				hash = cache.get(self.alias, entry.path_display)
+
+				if not os.path.isfile(destination) or hash != entry.content_hash:
+					cache.set(self.alias, entry.path_display, entry.content_hash)
+					self.download(entry.path_display, destination)
 
 	def download(self, dropbox_path, destination):
 		parent = os.path.dirname(destination)

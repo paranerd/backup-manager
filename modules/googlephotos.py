@@ -6,8 +6,9 @@ import webbrowser
 import urllib3
 from urllib.parse import urlencode, quote_plus
 
-from . import config
 from . import util
+from . import config
+from . import cache
 from .log import Logger
 
 class Google_Photos_Backup():
@@ -15,8 +16,6 @@ class Google_Photos_Backup():
 	credentials = ''
 	token = ''
 	backup_path = ''
-	cache_path = os.path.join(util.get_project_path(), 'cache', 'googlephotos.json')
-	cache = {}
 	excluded = []
 
 	def __init__(self):
@@ -67,7 +66,6 @@ class Google_Photos_Backup():
 		self.credentials = config.get(alias, 'credentials', None)
 		self.token = config.get(alias, 'token')
 		self.backup_path = config.get(alias, 'backup_path')
-		self.cache = self.get_cache()
 		self.excluded = config.get(alias, 'exclude', [])
 
 		# Make sure backup path exists
@@ -88,8 +86,6 @@ class Google_Photos_Backup():
 			self.logger.write("Finished Google Photos backup")
 		except KeyboardInterrupt:
 			self.logger.write("Interrupted")
-		finally:
-			self.write_cache()
 
 	def show_instructions(self):
 		print()
@@ -103,17 +99,6 @@ class Google_Photos_Backup():
 		print('Create an OAuth-Client-ID for "Others"')
 		print('Download the generated credentials json')
 		print()
-
-	def get_cache(self):
-		if not os.path.exists(self.cache_path):
-			return {}
-
-		with open(self.cache_path, 'r') as f:
-			return json.load(f)
-
-	def write_cache(self):
-		with open(self.cache_path, 'w+') as f:
-			f.write(json.dumps(self.cache, indent=4))
 
 	def build_auth_uri(self):
 		auth_uri = self.credentials['auth_uri']
@@ -213,7 +198,7 @@ class Google_Photos_Backup():
 
 			for item in items:
 				path = self.backup_path + "/" + year + "/" + name
-				filename = self.cache[item['id']] if item['id'] in self.cache else ''
+				filename = cache.get(self.alias, item['id'])
 				url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + item['mediaMetadata']['width'] + "-h" + item['mediaMetadata']['height']
 
 				if 'video' in item['mediaMetadata']:
@@ -257,7 +242,7 @@ class Google_Photos_Backup():
 				filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
 
 				if os.path.isfile(os.path.join(path, filename)):
-					self.cache[id] = filename
+					cache.set(self.alias, id, filename)
 					return
 
 		# Download file
@@ -266,7 +251,7 @@ class Google_Photos_Backup():
 
 		if r.status == 200:
 			filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
-			self.cache[id] = filename
+			cache.set(self.alias, id, filename)
 			self.logger.write("    " + filename)
 
 			with open(os.path.join(path, filename), 'wb') as out:

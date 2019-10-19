@@ -31,15 +31,6 @@ def type_to_module(type):
 		if module['type'] == type:
 			return module['module']
 
-def prepare():
-	"""
-	Create config file and cache folder
-	"""
-	cache_location = os.path.join(util.get_project_path(), "cache")
-
-	if not os.path.exists(cache_location):
-		os.makedirs(cache_location)
-
 def parse_args():
 	"""
 	Parse command line arguments
@@ -98,9 +89,6 @@ def show_help():
 
 if __name__ == "__main__":
 	args = parse_args()
-
-	# Prepare environment
-	prepare()
 
 	# Configure mail if necessary
 	if not config.exists('general', 'mail_user'):
