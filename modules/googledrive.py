@@ -55,10 +55,13 @@ class Google_Drive_Backup():
 		self.logger.write("")
 
 		self.alias = alias
-		self.backup_path = util.get_backup_path(alias)
+		self.backup_path = config.get(alias, 'backup_path')
 		self.credentials = config.get(alias, 'credentials', None)
 		self.token = config.get(alias, 'token')
 		self.exclude = config.get(alias, 'exclude', [])
+
+		# Make sure backup path exists
+		util.create_backup_path(self.backup_path, alias)
 
 		try:
 			self.get_children()

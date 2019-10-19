@@ -76,6 +76,7 @@ class Wordpress_Backup:
 		# Read config
 		webroot = config.get(alias, 'webroot')
 		backup_path = config.get(alias, 'backup_path')
+		backup_path = config.get(alias, 'backup_path')
 		ssh_user = config.get(alias, 'ssh_user')
 		ssh_host = config.get(alias, 'ssh_host')
 		ssh_pass = config.get(alias, 'ssh_pass')
@@ -83,6 +84,9 @@ class Wordpress_Backup:
 		db_user = config.get(alias, 'db_user')
 		db_host = config.get(alias, 'db_host')
 		db_pass = config.get(alias, 'db_pass')
+
+		# Make sure backup path exists
+		util.create_backup_path(backup_path, alias)
 
 		# Check if we have all necessary information
 		if not webroot or not backup_path or not ssh_user or not ssh_host \

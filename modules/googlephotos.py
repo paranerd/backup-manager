@@ -66,9 +66,12 @@ class Google_Photos_Backup():
 		self.alias = alias
 		self.credentials = config.get(alias, 'credentials', None)
 		self.token = config.get(alias, 'token')
-		self.backup_path = util.get_backup_path(alias)
+		self.backup_path = config.get(alias, 'backup_path')
 		self.cache = self.get_cache()
 		self.excluded = config.get(alias, 'exclude', [])
+
+		# Make sure backup path exists
+		util.create_backup_path(self.backup_path, alias)
 
 		try:
 			self.logger.write("Getting albums")

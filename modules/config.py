@@ -12,8 +12,19 @@ def read():
 
 	@return string
 	"""
+	# Make sure config exists
+	create()
+
 	with open(location, 'r') as f:
 		return json.load(f)
+
+def create():
+	"""
+	Create config
+	"""
+	if not os.path.exists(location):
+		with open(location, 'w') as f:
+			f.write(json.dumps({'general': {}}, indent=4))
 
 def exists(alias, key=None):
 	"""

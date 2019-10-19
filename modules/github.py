@@ -74,7 +74,10 @@ class Github_Backup:
 		try:
 			self.username = config.get(alias, 'username')
 			self.token = config.get(alias, 'token')
-			self.backup_path = util.get_backup_path(alias)
+			self.backup_path = config.get(alias, 'backup_path')
+
+			# Make sure backup path exists
+			util.create_backup_path(self.backup_path, alias)
 
 			if not self.username or not self.token:
 				raise Exception("Username and/or Token not set")

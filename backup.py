@@ -7,16 +7,18 @@ from modules.github import Github_Backup
 from modules.googledrive import Google_Drive_Backup
 from modules.googlephotos import Google_Photos_Backup
 from modules.wordpress import Wordpress_Backup
+from modules.dropbox import Dropbox_Backup
 
-from modules.log import Logger
 from modules import util
+from modules.log import Logger
 from modules import config
 
 modules = [
 	{'name': 'GitHub', 'type': 'github', 'module': Github_Backup},
 	{'name': 'Google Photos', 'type': 'googlephotos', 'module': Google_Photos_Backup},
 	{'name': 'Google Drive', 'type': 'googledrive', 'module': Google_Drive_Backup},
-	{'name': 'Wordpress', 'type': 'wordpress', 'module': Wordpress_Backup}
+	{'name': 'Wordpress', 'type': 'wordpress', 'module': Wordpress_Backup},
+	{'name': 'Dropbox', 'type': 'dropbox', 'module': Dropbox_Backup}
 ]
 
 def type_to_module(type):
@@ -33,13 +35,7 @@ def prepare():
 	"""
 	Create config file and cache folder
 	"""
-	config_location = os.path.join(util.get_project_path(), "config.json")
 	cache_location = os.path.join(util.get_project_path(), "cache")
-
-	if not os.path.exists(config_location):
-		default_config = {'general': {}}
-		with open(config_location, 'w') as config:
-			config.write(json.dumps(default_config, indent=4))
 
 	if not os.path.exists(cache_location):
 		os.makedirs(cache_location)

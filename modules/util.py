@@ -9,8 +9,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 
-from . import config
-
 def create_folder(path):
 	"""
 	Create folder if not exists
@@ -114,8 +112,8 @@ def get_project_path():
 	"""
 	return os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-def get_backup_path(alias):
-	backup_path = config.get(alias, 'backup_path', 'backups/' + alias)
+def create_backup_path(path, alias):
+	backup_path = path if path else 'backups/' + alias
 
 	if not backup_path.startswith("/"):
 		backup_path = get_project_path() + "/" + backup_path
