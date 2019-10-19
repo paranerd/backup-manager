@@ -2,40 +2,44 @@
 
 A backup-tool for multiple cloud-services
 
-Using "raw" web-requests, no special libraries whatsoever to keep dependencies at a minimum
-
 Currently supported:
 - Github
 - Google Drive
 - Google Photos
 - WordPress
+- Dropbox
 
-While Github is working "out-of-the-box", Google will need some minor setting up, see below for details
+Google and Dropbox will need some minor preparations, see below for details
 
 ## Prerequisites
 ```sh
 sudo apt install python3 python3-urllib3 sshpass
 ```
 
-## Configuration
-- Renaming config.json_sample to config.json
-- Setting a backup path
+```sh
+pip3 install requirements.txt
+```
 
-    By default, files will be backed up to the backups/-folder within the project's root
+## Add accounts
+To add an account to backup run
+```sh
+$ python3 backup.py --add
+```
 
-    You can change this location by modifying the config.json as follows:
+and follow the instructions
 
-    ```python
-    {
-        "github": {
-            "backup_path": "/path/to/your/backups"
-        }
-    }
-    ```
+## Backup accounts
+To start the backup run
+```sh
+$ python3 backup.py --backup [alias1, alias2]
+```
+
+If you provide aliases, only those accounts will be backed up.
 
 ## Setup E-Mail notifications
-On first start the script will ask for GMail credentials for notifications.  
-If you choose to enable this feature, enter your GMail-Account as "Mail user" and an "app password" as "Mail password".  
+Note that this feature will currently only work with Gmail
+On first start the script will ask for Gmail credentials for notifications.  
+If you choose to enable this feature, enter your Gmail-Account as "Mail user" and an "app password" as "Mail password".  
 Check out (this link)[https://support.google.com/accounts/answer/185833] for how to obtain an app password.
 
 ## Setup Google-Backup
@@ -48,6 +52,16 @@ Check out (this link)[https://support.google.com/accounts/answer/185833] for how
 7. Create an OAuth-Client-ID for "Others"
 8. Download the generated credentials json
 9. When prompted by the script, paste the content of that json
+
+## Setup Dropbox-Backup
+1. Go to https://www.dropbox.com/developers/apps
+2. Click "Create app"
+3. Select "Dropbox API"
+4. Select "Full Dropbox"
+5. Give it a name
+6. Click "Create app"
+7. Under "Generated access token" click "Generate"
+8. When prompted by the script, paste that token
 
 ## How it works
 1. Github
@@ -68,3 +82,6 @@ Check out (this link)[https://support.google.com/accounts/answer/185833] for how
     - Backs up all files in the server's home directory (excluding the backups) into that folder
     - Removes all but the last 5 backups
     - Syncs the backup folder to the backup folder you specified
+5. Dropbox
+    - Mirrors the folder structure of your Dropbox to your backup-path
+	- Checks for content hash to determine whether to download it or not (to avoid overhead)
