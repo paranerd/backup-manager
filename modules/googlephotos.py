@@ -6,6 +6,10 @@ import webbrowser
 import urllib3
 from urllib.parse import urlencode, quote_plus
 
+# Prevent SSL certificate errors
+from urllib3.contrib import pyopenssl
+pyopenssl.extract_from_urllib3()
+
 from . import util
 from . import config
 from . import cache
