@@ -17,7 +17,7 @@ sudo apt install python3 python3-urllib3 sshpass
 ```
 
 ```sh
-pip3 install requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ## Add accounts
