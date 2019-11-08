@@ -9,11 +9,13 @@ import json
 import os
 import re
 
-from . import util
-from . import config
-from .log import Logger
+from helpers import util
+from helpers import config
+from helpers.log import Logger
 
 class Github_Backup:
+	name = "GitHub"
+	type = "github"
 	username = ""
 	token = ""
 	API_URL = "https://api.github.com"
@@ -44,8 +46,7 @@ class Github_Backup:
 		password = getpass.getpass('Github password: ')
 
 		# Read backup path
-		backup_path = input('Backup path (optional): ')
-		backup_path = backup_path if backup_path else 'backups/' + alias
+		backup_path = input('Backup path (optional): ') or 'backups/' + alias
 
 		try:
 			# Obtain token

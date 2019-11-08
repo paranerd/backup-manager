@@ -10,12 +10,14 @@ from urllib.parse import urlencode, quote_plus
 from urllib3.contrib import pyopenssl
 pyopenssl.extract_from_urllib3()
 
-from . import util
-from . import config
-from . import cache
-from .log import Logger
+from helpers import util
+from helpers import config
+from helpers import cache
+from helpers.log import Logger
 
 class Google_Photos_Backup():
+	name = "Google Photos"
+	type = "googlephotos"
 	API_URL = "https://photoslibrary.googleapis.com/v1"
 	credentials = ''
 	token = ''
@@ -50,8 +52,7 @@ class Google_Photos_Backup():
 		token = self.request_token(code)
 
 		# Read backup path
-		backup_path = input('Backup path (optional): ')
-		backup_path = backup_path if backup_path else 'backups/' + self.alias
+		backup_path = input('Backup path (optional): ') or 'backups/' + self.alias
 
 		# Write config
 		config.set(self.alias, 'type', 'googlephotos')

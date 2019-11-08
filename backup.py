@@ -3,22 +3,26 @@ import sys
 import argparse
 import json
 
-from modules.github import Github_Backup
-from modules.googledrive import Google_Drive_Backup
-from modules.googlephotos import Google_Photos_Backup
-from modules.wordpress import Wordpress_Backup
-from modules.dropbox import Dropbox_Backup
+from strategies.github import Github_Backup
+from strategies.googledrive import Google_Drive_Backup
+from strategies.googlephotos import Google_Photos_Backup
+from strategies.wordpress import Wordpress_Backup
+from strategies.dropbox import Dropbox_Backup
+from strategies.mysql import MySQL_Backup
+from strategies.server import Server_Backup
 
-from modules import util
-from modules.log import Logger
-from modules import config
+from helpers import util
+from helpers.log import Logger
+from helpers import config
 
 modules = [
-	{'name': 'GitHub', 'type': 'github', 'module': Github_Backup},
-	{'name': 'Google Photos', 'type': 'googlephotos', 'module': Google_Photos_Backup},
-	{'name': 'Google Drive', 'type': 'googledrive', 'module': Google_Drive_Backup},
-	{'name': 'Wordpress', 'type': 'wordpress', 'module': Wordpress_Backup},
-	{'name': 'Dropbox', 'type': 'dropbox', 'module': Dropbox_Backup}
+	Github_Backup,
+	Google_Photos_Backup,
+	Google_Drive_Backup,
+	Wordpress_Backup,
+	Dropbox_Backup,
+	MySQL_Backup,
+	Server_Backup
 ]
 
 def type_to_module(type):
@@ -28,8 +32,8 @@ def type_to_module(type):
 	@return misc
 	"""
 	for module in modules:
-		if module['type'] == type:
-			return module['module']
+		if module.type == type:
+			return module
 
 def parse_args():
 	"""
@@ -65,13 +69,13 @@ def show_add_menu():
 	print('--- Select type: ---')
 
 	for index, entry in enumerate(modules):
-		print("[{}] {}".format(index + 1, entry['name']))
+		print("[{}] {}".format(index + 1, entry.name))
 
 	print()
 	type = int(input("Type: "))
 
 	try:
-		module = modules[type - 1]['module']()
+		module = modules[type - 1]()
 		module.add()
 	except Exception as e:
 		print(e)

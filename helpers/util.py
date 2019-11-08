@@ -9,6 +9,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 
+def remove(path):
+	if os.path.isfile(path):
+		os.remove(path)
+	else:
+		shutil.rmtree(path)
+
 def create_folder(path):
 	"""
 	Create folder if not exists
@@ -122,3 +128,28 @@ def create_backup_path(path, alias):
 		os.makedirs(backup_path)
 
 	return backup_path
+
+def cleanup_versions(dir, versions, prefix=""):
+	"""
+	Remove all but the latest x files in a folder
+	"""
+	# Get directory content
+	folders = os.listdir(dir)
+
+	#print(folders)
+
+	# Get absolute paths for all items
+	folders = [os.path.join(dir, f) for f in folders]
+
+	# Filter for prefix
+	folders = list(filter(lambda x: os.path.basename(x).startswith(prefix), folders))
+
+	#print(folders)
+
+	# Filter by modification date descending
+	folders.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+
+	#print(folders)
+
+	for folder in folders[versions:]:
+		remove(folder)

@@ -10,11 +10,13 @@ from urllib.parse import urlencode, quote_plus
 from urllib3.contrib import pyopenssl
 pyopenssl.extract_from_urllib3()
 
-from . import util
-from . import config
-from .log import Logger
+from helpers import util
+from helpers import config
+from helpers.log import Logger
 
 class Google_Drive_Backup():
+	name = "Google Drive"
+	type = "googledrive"
 	API_URL = "https://www.googleapis.com/drive/v3/files"
 	credentials = ''
 	token = ''
@@ -43,8 +45,7 @@ class Google_Drive_Backup():
 		token = self.request_token(code)
 
 		# Read backup path
-		backup_path = input('Backup path (optional): ')
-		backup_path = backup_path if backup_path else 'backups/' + self.alias
+		backup_path = input('Backup path (optional): ') or 'backups/' + self.alias
 
 		config.set(self.alias, 'type', 'googledrive')
 		config.set(self.alias, 'credentials', self.credentials)

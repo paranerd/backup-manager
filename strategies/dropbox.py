@@ -1,12 +1,14 @@
 import os
 import dropbox
 
-from . import util
-from . import config
-from . import cache
-from .log import Logger
+from helpers import util
+from helpers import config
+from helpers import cache
+from helpers.log import Logger
 
 class Dropbox_Backup:
+	name = "Dropbox"
+	type = "dropbox"
 	alias = ''
 
 	def __init__(self):
@@ -28,8 +30,7 @@ class Dropbox_Backup:
 		token = input('Access token: ')
 
 		# Read backup path
-		backup_path = input('Backup path (optional): ')
-		backup_path = backup_path if backup_path else 'backups/' + alias
+		backup_path = input('Backup path (optional): ') or 'backups/' + alias
 
 		# Write config
 		config.set(alias, 'type', 'dropbox')
