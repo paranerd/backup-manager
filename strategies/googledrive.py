@@ -231,7 +231,7 @@ class Google_Drive_Backup():
 			# Google Docs
 			elif self.is_type(item, 'document'):
 				url = self.API_URL + "/" + item['id'] + "/export?mimeType=application/pdf"
-				self.download(url, path, item['name'] + ".pdf", False)
+				self.download(url, path, item['name'] + "_converted.pdf", False)
 			# Google Spreadsheets
 			elif self.is_type(item, 'spreadsheet'):
 				url = self.API_URL + "/" + item['id'] + "/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
