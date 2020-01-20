@@ -24,7 +24,7 @@ class Server_Backup:
 			print("This alias already exists")
 			alias = input('Alias: ')
 
-		path = input("Path: ")
+		path = input("Path on server: ")
 		backup_path = input('Backup path (optional): ') or 'backups/' + alias
 		ssh_user = input("SSH user: ")
 		ssh_host = input("SSH host: ")
@@ -41,6 +41,7 @@ class Server_Backup:
 		config.set(alias, 'ssh_pass', ssh_pass)
 		config.set(alias, 'versions', int(versions))
 		config.set(alias, 'archive', archive)
+		config.set(alias, 'exclude', [])
 
 		print("Added.")
 
@@ -60,6 +61,7 @@ class Server_Backup:
 		ssh_pass = config.get(alias, 'ssh_pass')
 		versions = config.get(alias, 'versions')
 		archive = config.get(alias, 'archive')
+		exclude = config.get(alias, 'exclude', [])
 
 		# Make sure backup path exists
 		util.create_backup_path(backup_path, alias)
@@ -69,28 +71,30 @@ class Server_Backup:
 
 		if archive:
 			filename = alias if versions < 2 else alias + "_" + self.get_timestring()
-			self.archive(ssh_host, ssh_user, ssh_pass, path_from, backup_path, filename)
+			self.archive(ssh_host, ssh_user, ssh_pass, path_from, backup_path, filename, exclude)
 		else:
 			path_to = backup_path if versions < 2 else os.path.join(backup_path, alias + "_" + self.get_timestring())
-			self.sync(ssh_host, ssh_user, ssh_pass, path_from, path_to)
+			self.sync(ssh_host, ssh_user, ssh_pass, path_from, path_to, exclude)
 
 		# Remove old backups
 		util.cleanup_versions(backup_path, versions, alias)
 
-	def sync(self, host, user, password, path_from, path_to):
+	def sync(self, host, user, password, path_from, path_to, exclude=[]):
 		# Escape password
 		password = re.escape(password)
+		exclude_str = ' '.join(list(map(lambda x: '--exclude ' + x, exclude)))
 
 		# Sync using rsync
-		cmd = "sshpass -p {} rsync -a -e ssh {}@{}:{} {}/".format(password, user, host, path_from, path_to)
+		cmd = "sshpass -p {} rsync -a {} -e ssh {}@{}:{} {}/".format(password, exclude_str, user, host, path_from, path_to)
 		subprocess.run([cmd], shell=True)
 
-	def archive(self, host, user, password, path_from, path_to, filename):
+	def archive(self, host, user, password, path_from, path_to, filename, exclude=[]):
 		# Escape password
 		password = re.escape(password)
+		exclude_str = ' '.join(['-x ' + x + '**\*' if x.endswith('/') else '-x ' + x for x in exclude])
 
 		# Create zip on remote server
-		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"zip -r {}/{}.zip {}\"".format(password, user, host, path_from, filename, path_from)
+		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"zip -r {}/{}.zip {} {}\"".format(password, user, host, path_from, filename, path_from, exclude_str)
 		subprocess.run([cmd], shell=True)
 
 		# Pull backups
