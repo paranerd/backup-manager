@@ -31,7 +31,7 @@ class Server_Backup:
 		ssh_pass = input("SSH pass: ")
 		versions = input("Keep versions [1]: ") or 1
 		archive = input("Archive? [y/N]: ")
-		archive = archive != None and lower(archive) == 'y'
+		archive = archive != None and archive.lower() == 'y'
 
 		config.set(alias, 'type', 'server')
 		config.set(alias, 'path', path)
