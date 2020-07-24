@@ -94,7 +94,7 @@ class Server_Backup:
 		exclude_str = ' '.join(['-x ' + x + '**\*' if x.endswith('/') else '-x ' + x for x in exclude])
 
 		# Create zip on remote server
-		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"zip -r {}/{}.zip {} {}\"".format(password, user, host, path_from, filename, path_from, exclude_str)
+		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"cd {}/.. && zip -r {}/{}.zip `basename {}` {}\"".format(password, user, host, path_from, path_from, filename, path_from, exclude_str)
 		subprocess.run([cmd], shell=True)
 
 		# Pull backups
