@@ -4,7 +4,7 @@ import json
 from . import util
 
 # Determine config location
-location = os.path.join(util.get_project_path(), "config.json")
+location = os.path.join(util.get_project_path(), "config", "config.json")
 
 def read():
 	"""
