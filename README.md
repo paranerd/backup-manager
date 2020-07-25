@@ -44,14 +44,17 @@ Check out (this link)[https://support.google.com/accounts/answer/185833] for how
 
 ## Setup Google-Backup
 1. Go to https://console.developers.google.com/
-2. Create a project
-3. On the left select "Dashboard"
-4. Select "Activate APIs and services"
-5. Activate both Google Drive API and Photos Library API
-6. On the left select "Credentials"
-7. Create an OAuth-Client-ID for "Others"
-8. Download the generated credentials json
-9. When prompted by the script, paste the content of that json
+2. Choose or create a project
+3. Activate Drive API here: https://console.developers.google.com/apis/library/drive.googleapis.com
+4. Activate Photos API here: https://console.developers.google.com/apis/library/photoslibrary.googleapis.com
+5. Open https://console.developers.google.com/apis/credentials/consent
+6. Choose "External"
+7. Enter a name and click "Save"
+8. Open https://console.developers.google.com/apis/credentials
+9. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application
+10. Ignore the pop-up
+11. Download the client ID JSON
+12. When prompted by the script, paste the content of that json
 
 ## Setup Dropbox-Backup
 1. Go to https://www.dropbox.com/developers/apps

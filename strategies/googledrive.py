@@ -59,6 +59,10 @@ class Google_Drive_Backup():
 		self.logger.write("### Backup {} (Google Drive) ###".format(alias))
 		self.logger.write("")
 
+		if not config.exists(alias):
+			self.logger.write("Alias {} does not exist".format(alias))
+			return
+
 		self.alias = alias
 		self.backup_path = config.get(alias, 'backup_path')
 		self.credentials = config.get(alias, 'credentials', None)
@@ -80,7 +84,7 @@ class Google_Drive_Backup():
 		auth_uri += "?response_type=code"
 		auth_uri += "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0])
 		auth_uri += "&client_id=" + quote_plus(self.credentials['client_id'])
-		auth_uri += "&scope=https://www.googleapis.com/auth/drive"
+		auth_uri += "&scope=https://www.googleapis.com/auth/drive.readonly"
 		auth_uri += "&access_type=offline"
 		auth_uri += "&approval_prompt=auto"
 
@@ -162,15 +166,18 @@ class Google_Drive_Backup():
 
 	def show_instructions(self):
 		print()
-		print('How to get credentials:')
-		print('Go to https://console.developers.google.com/')
-		print('Create a project')
-		print('On the left select "Dashboard"')
-		print('Select "Activate APIs and services"')
-		print('Activate Google Drive API')
-		print('On the left select "Credentials"')
-		print('Create an OAuth-Client-ID for "Others"')
-		print('Download the generated credentials json')
+		print('If you already have an OAuth-Client-ID, download the JSON')
+		print('Otherwise, here\'s how to get credentials:')
+		print('1. Go to https://console.developers.google.com/')
+		print('2. Choose or create a project')
+		print('3. Activate Drive API here: https://console.developers.google.com/apis/library/drive.googleapis.com')
+		print('4. Open https://console.developers.google.com/apis/credentials/consent')
+		print('5. Choose "External"')
+		print('6. Enter a name and click "Save"')
+		print('7. Open https://console.developers.google.com/apis/credentials')
+		print('8. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application')
+		print('9. Ignore the pop-up')
+		print('10. Download the client ID JSON')
 		print()
 
 	def check_if_excluded(self, path):
