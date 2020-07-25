@@ -49,6 +49,10 @@ class Dropbox_Backup:
 		self.logger.write("### Backup {} (Dropbox) ###".format(alias))
 		self.logger.write("")
 
+		if not config.exists(alias):
+			self.logger.write("Alias {} does not exist".format(alias))
+			return
+
 		try:
 			self.alias = alias
 			token = config.get(alias, 'token')

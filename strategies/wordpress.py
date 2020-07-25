@@ -78,6 +78,10 @@ class Wordpress_Backup:
 		"""
 		self.logger.write('### Backup {} (WordPress) ###'.format(alias))
 
+		if not config.exists(alias):
+			self.logger.write("Alias {} does not exist".format(alias))
+			return
+
 		# Read config
 		webroot = config.get(alias, 'webroot')
 		backup_path = config.get(alias, 'backup_path')

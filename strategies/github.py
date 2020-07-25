@@ -72,6 +72,10 @@ class Github_Backup:
 		self.logger.write("### Backup {} (GitHub) ###".format(alias))
 		self.logger.write("")
 
+		if not config.exists(alias):
+			self.logger.write("Alias {} does not exist".format(alias))
+			return
+
 		try:
 			self.username = config.get(alias, 'username')
 			self.token = config.get(alias, 'token')

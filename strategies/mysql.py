@@ -55,6 +55,10 @@ class MySQL_Backup:
 		"""
 		self.logger.write('### Backup {} (Database) ###'.format(alias))
 
+		if not config.exists(alias):
+			self.logger.write("Alias {} does not exist".format(alias))
+			return
+
 		filename = self.get_timestring()
 
 		backup_path = config.get(alias, 'backup_path')

@@ -53,6 +53,10 @@ class Server_Backup:
 		"""
 		self.logger.write('### Backup {} (Server) ###'.format(alias))
 
+		if not config.exists(alias):
+			self.logger.write("Alias {} does not exist".format(alias))
+			return
+
 		# Read config
 		path_from = config.get(alias, 'path')
 		backup_path = config.get(alias, 'backup_path')
