@@ -64,7 +64,6 @@ def set(alias, key, value):
 	"""
 	if not alias in config:
 		config[alias] = {}
-		write()
 
 	config[alias][key] = value
 	write()
