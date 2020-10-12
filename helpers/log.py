@@ -13,7 +13,7 @@ name = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
 path = os.path.join(project_path, "log", name) + ".txt"
 
 class Logger():
-	prepared = ""
+	buffer = ""
 
 	def __init__(self):
 		"""
@@ -22,21 +22,21 @@ class Logger():
 		# Create logs folder
 		util.create_folder(logs_path)
 
-	def prepare(self, msg):
+	def addToBuffer(self, msg):
 		"""
-		Prepare log message without immediate writing
+		Buffer log message without immediate writing
 
 		@param string msg Log message
 		"""
-		self.prepared += msg
+		self.buffer += msg
 
 	def flush(self):
 		"""
-		Write prepared log message
+		Write buffered log message
 		"""
-		if self.prepared:
-			self.write(self.prepared)
-			self.prepared = ""
+		if self.buffer:
+			self.write(self.buffer)
+			self.buffer = ""
 
 	@staticmethod
 	def get_path():

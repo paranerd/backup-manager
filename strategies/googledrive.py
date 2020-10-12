@@ -230,7 +230,7 @@ class Google_Drive_Backup():
 				self.logger.write(path_item + " | excluded")
 				continue
 			elif not self.is_type(item, 'folder'):
-				self.logger.prepare(path_item)
+				self.logger.addToBuffer(path_item)
 
 			# Folders
 			if self.is_type(item, 'folder'):
@@ -271,7 +271,7 @@ class Google_Drive_Backup():
 			res = requests.head(url, headers=headers)
 
 			if res.status_code != 200:
-				util.prepare(" (Error getting file info)")
+				self.logger.addToBuffer(" (Error getting file info)")
 				return
 
 			filename = filename if filename else re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
@@ -295,4 +295,4 @@ class Google_Drive_Backup():
 
 			r.release_conn()
 		else:
-			self.logger.prepare(" (Error downloading: " + str(r.status) + " | " + str(r.data) + ")")
+			self.logger.addToBuffer(" (Error downloading: " + str(r.status) + " | " + str(r.data) + ")")
