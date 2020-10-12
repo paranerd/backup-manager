@@ -112,8 +112,3 @@ class Server_Backup:
 		@return string
 		"""
 		return datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
-
-if __name__ == "__main__":
-	#path_to = util.create_folder(os.path.join("backups/tgc", timestamp))
-	#server_download_version("thegermancoder.com", "root", "hf4u292U", "/root/debug", 3)
-	server_sync("thegermancoder.com", "root", "hf4u292U", "/root/debug")
