@@ -3,9 +3,11 @@
 A backup-tool for multiple cloud-services
 
 Currently supported:
-- Github
+- GitHub
 - Google Drive
 - Google Photos
+- Linux Server
+- MySQL Database
 - WordPress
 - Dropbox
 
@@ -19,6 +21,8 @@ sudo apt install python3 python3-urllib3 sshpass
 ```sh
 pip3 install -r requirements.txt
 ```
+
+If you want to back up GitHub non-archived, `git` must also be installed and configured
 
 ## Add accounts
 To add an account to backup run
@@ -38,26 +42,29 @@ If you provide aliases, only those accounts will be backed up.
 
 ## Setup E-Mail notifications
 Note that this feature will currently only work with Gmail
-On first start the script will ask for Gmail credentials for notifications.  
-If you choose to enable this feature, enter your Gmail-Account as "Mail user" and an "app password" as "Mail password".  
-Check out (this link)[https://support.google.com/accounts/answer/185833] for how to obtain an app password.
+
+On first start the script will ask for Gmail credentials for notifications.
+
+If you choose to enable this feature, enter your Gmail-Account as "Mail user" and an "App Password" as "Mail password".
+
+Check out [this link](https://support.google.com/accounts/answer/185833) for how to obtain an app password.
 
 ## Setup Google-Backup
-1. Go to https://console.developers.google.com/
+1. [Open google cloud console](https://console.developers.google.com/)
 2. Choose or create a project
-3. Activate Drive API here: https://console.developers.google.com/apis/library/drive.googleapis.com
-4. Activate Photos API here: https://console.developers.google.com/apis/library/photoslibrary.googleapis.com
-5. Open https://console.developers.google.com/apis/credentials/consent
+3. [Activate Drive API](https://console.developers.google.com/apis/library/drive.googleapis.com)
+4. [Activate Photos API](https://console.developers.google.com/apis/library/photoslibrary.googleapis.com)
+5. [Create consent page](https://console.developers.google.com/apis/credentials/consent)
 6. Choose "External"
 7. Enter a name and click "Save"
-8. Open https://console.developers.google.com/apis/credentials
+8. [Open credentials page](https://console.developers.google.com/apis/credentials)
 9. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application
 10. Ignore the pop-up
 11. Download the client ID JSON
 12. When prompted by the script, paste the content of that json
 
 ## Setup Dropbox-Backup
-1. Go to https://www.dropbox.com/developers/apps
+1. [Open Dropbox developers page](https://www.dropbox.com/developers/apps)
 2. Click "Create app"
 3. Select "Dropbox API"
 4. Select "Full Dropbox"
@@ -67,10 +74,13 @@ Check out (this link)[https://support.google.com/accounts/answer/185833] for how
 8. When prompted by the script, paste that token
 
 ## How it works
-1. Github
-    - Goes through all your repositories and backs up the latest release
-    - Saves each repository as [repository_name]-[tag].zip (e.g. my-project-1.0.zip)
-    - Older versions of the same repository will be removed (so there's only the most recent version backed up)
+1. GitHub
+    - Archive
+        - Goes through all your repositories and backs up the latest release
+        - Saves each repository as [repository_name]-[tag].zip (e.g. my-project-1.0.zip)
+        - Older versions of the same repository will be removed (so there's only the most recent version backed up)
+    - Non-archive
+        - Uses `git` (requires `git` to be set up) to `clone` or `pull --rebase`
 2. Google Drive
     - Mirrors the folder structure of your Drive to your backup-path
     - For regular files it compares the MD5-Hash to determine whether to download it or not (to avoid overhead)
@@ -80,11 +90,16 @@ Check out (this link)[https://support.google.com/accounts/answer/185833] for how
     - An album "2018-12-24 Christmas" will be backed up to /your/backup/folder/2018/2018-01-01 Christmas/
     - All other albums go to /your/backup/folder/0000/[albumname]
     - Since there's no MD5-Hashes for images either, the script simply uses the original filename to determine if it should download the image or not
-4. WordPress
-    - Backs up your database into a folder "backups/" in the server's home directory
-    - Backs up all files in the server's home directory (excluding the backups) into that folder
-    - Removes all but the last 5 backups
-    - Syncs the backup folder to the backup folder you specified
-5. Dropbox
+4. Linux Server
+    - Uses SSH to connect to the server
+    - Archive
+        - Uses `zip` on the server to compress, then backs up as many versions as specified
+    - Non-archive
+        - Uses `rsync`
+5. MySQL Database
+    - Uses `mysqldump` to dump the database
+6. WordPress
+    - Simply a combination of "Linux Server" and "MySQL Database"
+7. Dropbox
     - Mirrors the folder structure of your Dropbox to your backup-path
 	- Checks for content hash to determine whether to download it or not (to avoid overhead)
