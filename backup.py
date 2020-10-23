@@ -112,6 +112,7 @@ if __name__ == "__main__":
                 module.backup(alias)
     else:
         show_help()
+        sys.exit(1)
 
     # Mail log
     if config.get('general', 'mail_user') and config.get('general', 'mail_pass'):
