@@ -86,16 +86,19 @@ class Server_Backup:
 	def sync(self, host, user, password, path_from, path_to, exclude=[]):
 		# Escape password
 		password = re.escape(password)
-		exclude_str = ' '.join(list(map(lambda x: '--exclude ' + x, exclude)))
+		exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
 
 		# Sync using rsync
-		cmd = "sshpass -p {} rsync -a {} -e ssh {}@{}:{} {}/".format(password, exclude_str, user, host, path_from, path_to)
+		cmd = "sshpass -p {} rsync -a {} -e 'ssh -o StrictHostKeyChecking=no' {}@{}:{} {}/".format(password, exclude_str, user, host, path_from, path_to)
 		subprocess.run([cmd], shell=True)
 
 	def archive(self, host, user, password, path_from, path_to, filename, exclude=[]):
+		# Get name of folder to be backed up
+		basename = os.path.basename(path_from)
+
 		# Escape password
 		password = re.escape(password)
-		exclude_str = ' '.join(['-x ' + x + '**\*' if x.endswith('/') else '-x ' + x for x in exclude])
+		exclude_str = ' '.join(['-x \'' + os.path.join(basename, x) + '*\'' if x.endswith('/') else '-x \'' + os.path.join(basename, x) + '\'' for x in exclude])
 
 		# Create zip on remote server
 		cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"cd {}/.. && zip -r {}/{}.zip `basename {}` {}\"".format(password, user, host, path_from, path_from, filename, path_from, exclude_str)
