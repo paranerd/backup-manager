@@ -78,5 +78,5 @@ class MySQL_Backup:
 		db_pass = re.escape(db_pass)
 
 		# Dump MySQL
-		cmd = "mysqldump {} --add-drop-table -h {} -u {} -p{} > {}/{}.sql".format(db_name, db_host, db_user, db_pass, path_to, filename)
+		cmd = "mysqldump {} --column-statistics=0 --add-drop-table -h {} -u {} -p{} > {}/{}.sql".format(db_name, db_host, db_user, db_pass, path_to, filename)
 		subprocess.run([cmd], shell=True)
