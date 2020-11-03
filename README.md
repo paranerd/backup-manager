@@ -15,7 +15,7 @@ Google and Dropbox will need some minor preparations, see below for details
 
 ## Prerequisites
 ```sh
-sudo apt install python3 python3-urllib3 sshpass
+sudo apt install python3 python3-urllib3 sshpass mysql-clients
 ```
 
 ```sh
