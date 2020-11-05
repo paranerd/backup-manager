@@ -60,7 +60,7 @@ class Github_Backup:
             raise Exception("Could not obtain access token. Please check your credentials. {}".format(e))
 
         # Write config
-        config.set(alias, 'type', 'github')
+        config.set(alias, 'type', self.type)
         config.set(alias, 'username', username)
         config.set(alias, 'token', token)
         config.set(alias, 'backup_path', backup_path)

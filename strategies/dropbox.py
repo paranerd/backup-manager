@@ -33,7 +33,7 @@ class Dropbox_Backup:
 		backup_path = input('Backup path (optional): ') or 'backups/' + alias
 
 		# Write config
-		config.set(alias, 'type', 'dropbox')
+		config.set(alias, 'type', self.type)
 		config.set(alias, 'token', token)
 		config.set(alias, 'backup_path', backup_path)
 
@@ -46,7 +46,7 @@ class Dropbox_Backup:
 		@param string alias
 		"""
 		self.logger.write("")
-		self.logger.write("### Backup {} (Dropbox) ###".format(alias))
+		self.logger.write("### Backup {} ({}) ###".format(alias, self.name))
 		self.logger.write("")
 
 		if not config.exists(alias):

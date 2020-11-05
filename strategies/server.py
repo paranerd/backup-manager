@@ -33,7 +33,7 @@ class Server_Backup:
 		archive = input("Archive? [y/N]: ")
 		archive = archive != None and archive.lower() == 'y'
 
-		config.set(alias, 'type', 'server')
+		config.set(alias, 'type', self.type)
 		config.set(alias, 'path', path)
 		config.set(alias, 'backup_path', backup_path)
 		config.set(alias, 'ssh_user', ssh_user)
@@ -51,7 +51,7 @@ class Server_Backup:
 
 		@param string alias
 		"""
-		self.logger.write('### Backup {} (Server) ###'.format(alias))
+		self.logger.write('### Backup {} ({}) ###'.format(alias, self.name))
 
 		if not config.exists(alias):
 			self.logger.write("Alias {} does not exist".format(alias))

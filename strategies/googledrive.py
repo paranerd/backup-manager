@@ -47,7 +47,7 @@ class Google_Drive_Backup():
 		# Read backup path
 		backup_path = input('Backup path (optional): ') or 'backups/' + self.alias
 
-		config.set(self.alias, 'type', 'googledrive')
+		config.set(self.alias, 'type', self.type)
 		config.set(self.alias, 'credentials', self.credentials)
 		config.set(self.alias, 'token', token)
 		config.set(self.alias, 'backup_path', backup_path)
@@ -56,7 +56,7 @@ class Google_Drive_Backup():
 
 	def backup(self, alias):
 		self.logger.write("")
-		self.logger.write("### Backup {} (Google Drive) ###".format(alias))
+		self.logger.write("### Backup {} ({}) ###".format(alias, self.name))
 		self.logger.write("")
 
 		if not config.exists(alias):

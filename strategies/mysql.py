@@ -30,7 +30,7 @@ class MySQL_Backup:
 		db_host = input("Database host: ")
 		db_pass = input("Database password: ")
 
-		config.set(alias, 'type', 'database')
+		config.set(alias, 'type', self.type)
 		config.set(alias, 'backup_path', backup_path)
 		config.set(alias, 'db_name', db_name)
 		config.set(alias, 'db_user', db_user)
@@ -53,7 +53,7 @@ class MySQL_Backup:
 
 		@param string alias
 		"""
-		self.logger.write('### Backup {} (Database) ###'.format(alias))
+		self.logger.write('### Backup {} ({}) ###'.format(alias, self.name))
 
 		if not config.exists(alias):
 			self.logger.write("Alias {} does not exist".format(alias))

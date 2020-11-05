@@ -39,7 +39,7 @@ class Wordpress_Backup:
 		db_host = input("Database host [{}]: ".format(ssh_host)) or ssh_host
 		db_pass = input("Database password: ")
 
-		config.set(alias, 'type', 'wordpress')
+		config.set(alias, 'type', self.type)
 		config.set(alias, 'webroot', webroot)
 		config.set(alias, 'backup_path', backup_path)
 		config.set(alias, 'versions', int(versions))
@@ -76,7 +76,7 @@ class Wordpress_Backup:
 
 		@param string alias
 		"""
-		self.logger.write('### Backup {} (WordPress) ###'.format(alias))
+		self.logger.write('### Backup {} ({}) ###'.format(alias, self.name))
 
 		if not config.exists(alias):
 			self.logger.write("Alias {} does not exist".format(alias))

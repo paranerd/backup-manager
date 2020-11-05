@@ -55,7 +55,7 @@ class Google_Photos_Backup():
 		backup_path = input('Backup path (optional): ') or 'backups/' + self.alias
 
 		# Write config
-		config.set(self.alias, 'type', 'googlephotos')
+		config.set(self.alias, 'type', self.type)
 		config.set(self.alias, 'credentials', self.credentials)
 		config.set(self.alias, 'token', token)
 		config.set(self.alias, 'backup_path', backup_path)
@@ -64,7 +64,7 @@ class Google_Photos_Backup():
 
 	def backup(self, alias):
 		self.logger.write("")
-		self.logger.write("### Backup {} (Google Photos) ###".format(alias))
+		self.logger.write("### Backup {} ({}) ###".format(alias, self.name))
 		self.logger.write("")
 
 		if not config.exists(alias):
