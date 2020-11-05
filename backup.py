@@ -10,6 +10,7 @@ from strategies.wordpress import Wordpress_Backup
 from strategies.dropbox import Dropbox_Backup
 from strategies.mysql import MySQL_Backup
 from strategies.server import Server_Backup
+from strategies.mongodb import MongoDB_Backup
 
 from helpers import util
 from helpers.log import Logger
@@ -22,7 +23,8 @@ modules = [
     Wordpress_Backup,
     Dropbox_Backup,
     MySQL_Backup,
-    Server_Backup
+    Server_Backup,
+    MongoDB_Backup
 ]
 
 def type_to_module(type):
