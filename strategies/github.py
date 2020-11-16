@@ -74,12 +74,11 @@ class Github_Backup:
 
         @param string alias
         """
-        self.logger.write("")
-        self.logger.write("### Backup {} ({}) ###".format(alias, self.name))
-        self.logger.write("")
+        self.logger.set_source(alias)
+        self.logger.info("Starting...")
 
         if not config.exists(alias):
-            self.logger.write("Alias {} does not exist".format(alias))
+            self.logger.error("Alias {} does not exist".format(alias))
             return
 
         try:
@@ -98,19 +97,22 @@ class Github_Backup:
             repositories = self.get_repositories()
 
             for repository in repositories:
-                self.logger.addToBuffer(repository['name'])
-
                 if do_archive:
                     self.archive(repository, True)
                 else:
                     self.sync(repository)
-                self.logger.flush()
 
-            self.logger.write("Finished GitHub backup")
-
+            # Done
+            self.logger.info("Done")
+        except KeyboardInterrupt:
+            self.logger.warn("Interrupted")
         except Exception as e:
-            self.logger.flush()
-            self.logger.write(e)
+            self.logger.error(e)
+        finally:
+            return {
+                'errors': self.logger.count_errors(),
+                'warnings': self.logger.count_warnings()
+            }
 
     def sync(self, repository):
         """
@@ -118,11 +120,14 @@ class Github_Backup:
 
         @param dict repository
         """
+        # Get current version
+        version = self.get_current_version(repository)
+
         if os.path.exists(os.path.join(self.backup_path, repository['name'])):
-            self.logger.addToBuffer(" -> Pulling...")
+            self.logger.info("Pulling {} ({})...".format(repository['name'], version['number']))
             subprocess.run(['git', '-C', os.path.join(self.backup_path, repository['name']), "pull", "--rebase", "https://github.com/paranerd/{}.git".format(repository['name'])], stdout=subprocess.PIPE)
         else:
-            self.logger.addToBuffer(" -> Cloning...")
+            self.logger.info("Cloning {} ({})...".format(repository['name'], version['number']))
             subprocess.run(['git', '-C', self.backup_path, "clone", "https://github.com/paranerd/{}.git".format(repository['name'])], stdout=subprocess.PIPE)
 
     def get_token(self, username, password):
@@ -229,7 +234,7 @@ class Github_Backup:
         opener = urllib.request.build_opener(authhandler)
         urllib.request.install_opener(opener)
 
-        self.logger.addToBuffer(" -> " + os.path.basename(filename))
+        self.logger.info("Archiving {} ({})...".format(repository['name'], version['number']))
 
         with urllib.request.urlopen(url) as response, open(os.path.join(self.backup_path, filename), 'wb') as out_file:
             data = response.read()

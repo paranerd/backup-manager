@@ -64,6 +64,17 @@ def configure_mail():
     config.set('general', 'mail_user', mail_user)
     config.set('general', 'mail_pass', mail_pass)
 
+def format_mail_body(warnings, errors):
+    """
+    Format mail body
+
+    @param int warnings
+    @param int errors
+
+    @return string
+    """
+    return "<h1>Backup My Accounts</h1><p>Backup complete</p><p>{} Warnings</p><p>{} Errors</p>".format(warnings, errors)
+
 def show_add_menu():
     """
     Display menu for adding accounts
@@ -96,6 +107,10 @@ def show_help():
 if __name__ == "__main__":
     args = parse_args()
 
+    # Count warnings and errors
+    warnings = 0
+    errors = 0
+
     # Configure mail if necessary
     if not config.exists('general', 'mail_user'):
         configure_mail()
@@ -111,11 +126,16 @@ if __name__ == "__main__":
 
             if entry and alias != "general":
                 module = type_to_module(entry['type'])()
-                module.backup(alias)
+                res = module.backup(alias)
+
+                warnings += res['warnings']
+                errors += res['errors']
     else:
         show_help()
         sys.exit(1)
 
     # Mail log
+    mail_body = format_mail_body(warnings, errors)
+
     if config.get('general', 'mail_user') and config.get('general', 'mail_pass'):
-        util.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), [config.get('general', 'mail_user')], "Backup My Accounts", "Backup complete.", [Logger.get_path()])
+        util.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), [config.get('general', 'mail_user')], "Backup My Accounts", mail_body, [Logger.get_path()])

@@ -69,7 +69,7 @@ def get_timestamp(format=False):
 	@return string|int
 	"""
 	if format:
-		return datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+		return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 	else:
 		return int(round(time.time() * 1000))
 
@@ -77,12 +77,12 @@ def send_gmail(send_from, pwd, send_to, subject, text, files=None):
 	"""
 	Send E-Mail using GMail
 
-	@param send_from string
-	@param pwd       string
-	@param send_to   list
-	@param subject   string
-	@param text      string
-	@param files     list
+	@param string send_from
+	@param string pwd
+	@param list send_to
+	@param string subject
+	@param string text
+	@param list files
 	"""
 	msg = MIMEMultipart()
 	msg['From'] = send_from
@@ -90,7 +90,7 @@ def send_gmail(send_from, pwd, send_to, subject, text, files=None):
 	msg['Date'] = formatdate(localtime=True)
 	msg['Subject'] = subject
 
-	msg.attach(MIMEText(text))
+	msg.attach(MIMEText(text, 'html'))
 
 	for f in files or []:
 		with open(f, "rb") as fil:
