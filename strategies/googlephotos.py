@@ -85,6 +85,7 @@ class GooglePhotos():
         try:
             self.logger.info("Getting albums...")
             albums = self.get_albums()
+            self.logger.info("Scanning {} albums for new items...".format(len(albums)))
 
             for album in albums:
                 if not self.check_if_excluded(album['title']):
@@ -268,7 +269,7 @@ class GooglePhotos():
         if r.status == 200:
             filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
             self.cache.set(item_id, filename)
-            self.logger.info(os.path.join(path, filename))
+            self.logger.info("Downloading {} -> {}".format(os.path.basename(path), filename))
 
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:
