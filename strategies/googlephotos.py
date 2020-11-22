@@ -85,10 +85,10 @@ class GooglePhotos():
         try:
             self.logger.info("Getting albums...")
             albums = self.get_albums()
-            self.logger.info("Scanning {} albums for new items...".format(len(albums)))
 
             for album in albums:
                 if not self.check_if_excluded(album['title']):
+                    self.logger.info("Scanning {} for new items...".format(album['title']))
                     self.get_album_content(album['id'], album['title'])
 
             # Done
