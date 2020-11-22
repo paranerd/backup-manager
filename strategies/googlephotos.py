@@ -12,24 +12,26 @@ pyopenssl.extract_from_urllib3()
 
 from helpers import util
 from helpers import config
-from helpers import cache
+from helpers.cache import Cache
 from helpers.log import Logger
 
-class Google_Photos_Backup():
-    name = "Google Photos"
-    type = "googlephotos"
+class GooglePhotos():
+    NAME = "Google Photos"
+    TYPE = "googlephotos"
     API_URL = "https://photoslibrary.googleapis.com/v1"
     credentials = ''
     token = ''
     backup_path = ''
     excluded = []
     alias = ''
+    cache = None
 
     def __init__(self):
         """
         Constructor
         """
         self.logger = Logger()
+        self.cache = Cache(self.alias)
 
     def add(self):
         """
@@ -56,7 +58,7 @@ class Google_Photos_Backup():
         backup_path = input('Backup path (optional): ') or 'backups/' + self.alias
 
         # Write config
-        config.set(self.alias, 'type', self.type)
+        config.set(self.alias, 'type', self.TYPE)
         config.set(self.alias, 'credentials', self.credentials)
         config.set(self.alias, 'token', token)
         config.set(self.alias, 'backup_path', backup_path)
@@ -75,7 +77,7 @@ class Google_Photos_Backup():
         self.credentials = config.get(alias, 'credentials', None)
         self.token = config.get(alias, 'token')
         self.backup_path = config.get(alias, 'backup_path')
-        self.excluded = config.get(alias, 'exclude', [])
+        self.excluded = config.get(alias, 'exclude') or []
 
         # Make sure backup path exists
         util.create_backup_path(self.backup_path, alias)
@@ -214,13 +216,13 @@ class Google_Photos_Backup():
 
             for item in items:
                 path = self.backup_path + "/" + year + "/" + name
-                filename = cache.get(self.alias, item['id'])
+                filename = self.cache.get(item['id'])
                 url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + item['mediaMetadata']['width'] + "-h" + item['mediaMetadata']['height']
 
                 if 'video' in item['mediaMetadata']:
                     filename = filename if filename else self.get_video_filename(item)
 
-                self.download(item['baseUrl'] + url_postfix, item['id'], path, filename, True)
+                self.download(item['baseUrl'] + url_postfix, item['id'], path, filename)
 
         if 'nextPageToken' in res['body']:
             self.get_album_content(album_id, name, res['body']['nextPageToken'])
@@ -233,7 +235,7 @@ class Google_Photos_Backup():
 
         return filename + ".mp4"
 
-    def download(self, url, item_id, path, filename="", check_if_exists=False):
+    def download(self, url, item_id, path, filename=""):
         # Create folder if not exists
         if not os.path.exists(path):
             os.makedirs(path)
@@ -243,22 +245,21 @@ class Google_Photos_Backup():
         }
 
         # Check if file already exists
-        if check_if_exists:
-            if filename:
-                if os.path.isfile(os.path.join(path, filename)):
-                    return
-            else:
-                res = self.execute_request(url, {}, {}, 'HEAD')
+        if filename:
+            if os.path.isfile(os.path.join(path, filename)):
+                return
+        else:
+            res = self.execute_request(url, {}, {}, 'HEAD')
 
-                if res['status'] != 200:
-                    self.logger.warn("Could not get file info ({}) -> {}".format(str(res['status']), str(res['headers'])))
-                    return
+            if res['status'] != 200:
+                self.logger.warn("Could not get file info ({}) -> {}".format(str(res['status']), str(res['headers'])))
+                return
 
-                filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
+            filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
 
-                if os.path.isfile(os.path.join(path, filename)):
-                    cache.set(self.alias, item_id, filename)
-                    return
+            if os.path.isfile(os.path.join(path, filename)):
+                self.cache.set(item_id, filename)
+                return
 
         # Download file
         http = urllib3.PoolManager()
@@ -266,7 +267,7 @@ class Google_Photos_Backup():
 
         if r.status == 200:
             filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
-            cache.set(self.alias, item_id, filename)
+            self.cache.set(item_id, filename)
             self.logger.info(os.path.join(path, filename))
 
             with open(os.path.join(path, filename), 'wb') as out:

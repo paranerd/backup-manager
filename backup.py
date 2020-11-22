@@ -3,28 +3,28 @@ import sys
 import argparse
 import json
 
-from strategies.github import Github_Backup
-from strategies.googledrive import Google_Drive_Backup
-from strategies.googlephotos import Google_Photos_Backup
-from strategies.wordpress import Wordpress_Backup
-from strategies.dropbox import Dropbox_Backup
-from strategies.mysql import MySQL_Backup
-from strategies.server import Server_Backup
-from strategies.mongodb import MongoDB_Backup
+from strategies.github import Github
+from strategies.googledrive import GoogleDrive
+from strategies.googlephotos import GooglePhotos
+from strategies.wordpress import Wordpress
+from strategies.dropbox import Dropbox
+from strategies.mysql import MySQL
+from strategies.server import Server
+from strategies.mongodb import MongoDB
 
 from helpers import util
 from helpers.log import Logger
 from helpers import config
 
 modules = [
-    Github_Backup,
-    Google_Photos_Backup,
-    Google_Drive_Backup,
-    Wordpress_Backup,
-    Dropbox_Backup,
-    MySQL_Backup,
-    Server_Backup,
-    MongoDB_Backup
+    Github,
+    GooglePhotos,
+    GoogleDrive,
+    Wordpress,
+    Dropbox,
+    MySQL,
+    Server,
+    MongoDB
 ]
 
 def type_to_module(type):
@@ -34,7 +34,7 @@ def type_to_module(type):
     @return misc
     """
     for module in modules:
-        if module.type == type:
+        if module.TYPE == type:
             return module
 
 def parse_args():
@@ -82,7 +82,7 @@ def show_add_menu():
     print('--- Select type: ---')
 
     for index, entry in enumerate(modules):
-        print("[{}] {}".format(index + 1, entry.name))
+        print("[{}] {}".format(index + 1, entry.NAME))
 
     print()
     type = int(input("Type: "))

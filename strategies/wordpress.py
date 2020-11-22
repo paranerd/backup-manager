@@ -2,16 +2,16 @@ import os
 import re
 import datetime
 
-from .mysql import MySQL_Backup
-from .server import Server_Backup
+from .mysql import MySQL
+from .server import Server
 
 from helpers import util
 from helpers import config
 from helpers.log import Logger
 
-class Wordpress_Backup:
-    name = "WordPress"
-    type = "wordpress"
+class Wordpress:
+    NAME = "WordPress"
+    TYPE = "wordpress"
 
     def __init__(self):
         self.timestamp = self.get_timestring()
@@ -37,7 +37,7 @@ class Wordpress_Backup:
         db_host = input("Database host [{}]: ".format(ssh_host)) or ssh_host
         db_pass = input("Database password: ")
 
-        config.set(alias, 'type', self.type)
+        config.set(alias, 'type', self.TYPE)
         config.set(alias, 'webroot', webroot)
         config.set(alias, 'backup_path', backup_path)
         config.set(alias, 'versions', int(versions))
@@ -109,11 +109,11 @@ class Wordpress_Backup:
             path_to = util.create_folder(os.path.join(backup_path, alias + "_" + version_name))
 
             # Backup database
-            db = MySQL_Backup()
+            db = MySQL()
             db.download(db_name, db_host, db_user, db_pass, path_to, version_name)
 
             # Backup files
-            server = Server_Backup()
+            server = Server()
             server.archive(ssh_host, ssh_user, ssh_pass, webroot, path_to, version_name)
 
             # Remove old versions

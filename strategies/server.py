@@ -7,9 +7,9 @@ from helpers import util
 from helpers import config
 from helpers.log import Logger
 
-class Server_Backup:
-    name = 'Server'
-    type = 'server'
+class Server:
+    NAME = 'Server'
+    TYPE = 'server'
 
     def __init__(self):
         self.logger = Logger()
@@ -32,7 +32,7 @@ class Server_Backup:
         archive = input("Archive? [y/N]: ")
         archive = archive != None and archive.lower() == 'y'
 
-        config.set(alias, 'type', self.type)
+        config.set(alias, 'type', self.TYPE)
         config.set(alias, 'path', path)
         config.set(alias, 'backup_path', backup_path)
         config.set(alias, 'ssh_user', ssh_user)

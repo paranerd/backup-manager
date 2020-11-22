@@ -1,22 +1,18 @@
-import requests
-import getpass
-import urllib.request
-from urllib.parse import urlencode, quote_plus
-import urllib3
-import shutil
-import base64
-import json
 import os
+import json
 import re
+import getpass
 import subprocess
+import urllib.request
+import requests
 
 from helpers import util
 from helpers import config
 from helpers.log import Logger
 
-class Github_Backup:
-    name = "GitHub"
-    type = "github"
+class Github:
+    NAME = "GitHub"
+    TYPE = "github"
     username = ""
     token = ""
     API_URL = "https://api.github.com"
@@ -60,7 +56,7 @@ class Github_Backup:
             raise Exception("Could not obtain access token. Please check your credentials. {}".format(e))
 
         # Write config
-        config.set(alias, 'type', self.type)
+        config.set(alias, 'type', self.TYPE)
         config.set(alias, 'username', username)
         config.set(alias, 'token', token)
         config.set(alias, 'backup_path', backup_path)

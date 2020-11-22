@@ -3,83 +3,91 @@ import json
 
 from . import util
 
-# Determine cache location
-location = os.path.join(util.get_project_path(), "cache", "cache.json")
+class Cache:
+    def __init__(self, namespace):
+        """
+        Constructor
 
-def read():
-	"""
-	Read and return cache file
+        @param string namespace
+        """
+        self.namespace = namespace
 
-	@return string
-	"""
-	# Make sure cache exists
-	create()
+        # Determine cache location
+        self.location = os.path.join(util.get_project_path(), "cache", "{}.json".format(self.namespace))
 
-	with open(location, 'r') as f:
-		return json.load(f)
+        # Read cache to variable
+        self.cache = self.read()
 
-def create():
-	"""
-	Create cache
-	"""
-	if not os.path.exists(location):
-		# Create cache folder
-		if not os.path.exists(os.path.dirname(location)):
-			os.makedirs(os.path.dirname(location))
+    def read(self):
+        """
+        Read and return cache file
 
-		# Create cache file
-		with open(location, 'w') as f:
-			f.write(json.dumps({}, indent=4))
+        @return string
+        """
+        # Make sure cache exists
+        self.create()
 
-def exists(alias, key=None):
-	"""
-	Check if key exists in entry
+        with open(self.location, 'r') as f:
+            return json.load(f)
 
-	@param string alias
-	@param string key (optional)
-	@return boolean
-	"""
-	return alias in cache and (key == None or key in cache[alias])
+    def create(self):
+        """
+        Create cache
+        """
+        if not os.path.exists(self.location):
+            # Create cache folder
+            if not os.path.exists(os.path.dirname(self.location)):
+                os.makedirs(os.path.dirname(self.location))
 
-def get(alias, key=None, default=""):
-	"""
-	Get entire entry or specific value for key
+            # Create cache file
+            with open(self.location, 'w') as f:
+                f.write(json.dumps({}, indent=4))
 
-	@param string alias
-	@param string key (optional)
-	@param string default (optional)
-	@return string
-	"""
-	if alias in cache:
-		if key:
-			if key in cache[alias] and cache[alias][key] != "":
-				return cache[alias][key]
-		else:
-			return cache[alias]
+    def exists(self, key):
+        """
+        Check if key exists in entry
 
-	return default
+        @param string key
+        @return boolean
+        """
+        return self.namespace in self.cache and key in self.cache[self.namespace]
 
-def set(alias, key, value):
-	"""
-	Add value to entry
+    def get(self, key):
+        """
+        Get entire entry or specific value for key
 
-	@param string alias
-	@param string key
-	@param string value
-	"""
-	if not alias in cache:
-		cache[alias] = {}
-		write()
+        @param string alias
+        @param string key (optional)
+        @param string default (optional)
+        @return string
+        """
+        if self.namespace in self.cache:
+            if key:
+                if key in self.cache[self.namespace] and self.cache[self.namespace][key] != "":
+                    return self.cache[self.namespace][key]
+            else:
+                return self.cache[self.namespace]
 
-	cache[alias][key] = value
-	write()
+        return None
 
-def write():
-	"""
-	Write cache to file
-	"""
-	with open(location, 'w') as f:
-		f.write(json.dumps(cache, indent=4))
+    def set(self, key, value):
+        """
+        Add value to entry
 
-# Read cache to variable
-cache = read()
+        @param string alias
+        @param string key
+        @param string value
+        """
+        if not self.namespace in self.cache:
+            self.cache[self.namespace] = {}
+
+        self.cache[self.namespace][key] = value
+
+        self.write()
+
+    def write(self):
+        """
+        Write cache to file
+        """
+        with open(self.location, 'w') as f:
+            f.write(json.dumps(self.cache, indent=4))

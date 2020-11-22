@@ -1,5 +1,3 @@
-import os
-import sys
 import subprocess
 import re
 import datetime
@@ -8,9 +6,9 @@ from helpers import util
 from helpers import config
 from helpers.log import Logger
 
-class MySQL_Backup:
-    name = "MySQL"
-    type = "mysql"
+class MySQL:
+    NAME = "MySQL"
+    TYPE = "mysql"
 
     def __init__(self):
         self.logger = Logger()
@@ -30,7 +28,7 @@ class MySQL_Backup:
         db_host = input("Database host: ")
         db_pass = input("Database password: ")
 
-        config.set(alias, 'type', self.type)
+        config.set(alias, 'type', self.TYPE)
         config.set(alias, 'backup_path', backup_path)
         config.set(alias, 'db_name', db_name)
         config.set(alias, 'db_user', db_user)

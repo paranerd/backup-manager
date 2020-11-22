@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import re
 import json
 import requests
@@ -14,14 +15,15 @@ from helpers import util
 from helpers import config
 from helpers.log import Logger
 
-class Google_Drive_Backup():
-    name = "Google Drive"
-    type = "googledrive"
+class GoogleDrive():
+    NAME = "Google Drive"
+    TYPE = "googledrive"
     API_URL = "https://www.googleapis.com/drive/v3/files"
     credentials = ''
     token = ''
     backup_path = ''
     alias = ''
+    excluded = []
 
     def __init__(self):
         self.logger = Logger()
@@ -47,7 +49,7 @@ class Google_Drive_Backup():
         # Read backup path
         backup_path = input('Backup path (optional): ') or 'backups/' + self.alias
 
-        config.set(self.alias, 'type', self.type)
+        config.set(self.alias, 'type', self.TYPE)
         config.set(self.alias, 'credentials', self.credentials)
         config.set(self.alias, 'token', token)
         config.set(self.alias, 'backup_path', backup_path)
@@ -66,7 +68,7 @@ class Google_Drive_Backup():
         self.backup_path = config.get(alias, 'backup_path')
         self.credentials = config.get(alias, 'credentials', None)
         self.token = config.get(alias, 'token')
-        self.exclude = config.get(alias, 'exclude', [])
+        self.exclude = config.get(alias, 'exclude') or []
 
         # Make sure backup path exists
         util.create_backup_path(self.backup_path, alias)
@@ -172,6 +174,9 @@ class Google_Drive_Backup():
             raise Exception("Error getting token: " + str(res['body']))
 
     def show_instructions(self):
+        """
+        Prints setup instructions
+        """
         print()
         print('If you already have an OAuth-Client-ID, download the JSON')
         print('Otherwise, here\'s how to get credentials:')
@@ -188,29 +193,73 @@ class Google_Drive_Backup():
         print()
 
     def check_if_excluded(self, path):
+        """
+        Checks if file is to be excluded from download
+
+        @param string path
+
+        @return boolean
+        """
         for e in self.exclude:
             if re.match(e, path):
                 return True
 
         return False
 
-    def is_type(self, item, type):
-        if type == 'folder' and item['mimeType'] == 'application/vnd.google-apps.folder':
-            return True
-        elif type == 'document' and item['mimeType'] == 'application/vnd.google-apps.document':
-            return True
-        elif type == 'spreadsheet' and item['mimeType'] == 'application/vnd.google-apps.spreadsheet':
-            return True
-        else:
-            return False
+    def is_folder(self, item):
+        """
+        Checks if item is a Google Folder
 
-    def get_children(self, id='root', parents=[], pageToken=""):
+        @param GoogleDriveFile
+
+        @return boolean
+        """
+        return item['mimeType'] == 'application/vnd.google-apps.folder'
+
+    def is_google_doc(self, item):
+        """
+        Checks if item is a Google Doc
+
+        @param GoogleDriveFile
+
+        @return boolean
+        """
+        return item['mimeType'] == 'application/vnd.google-apps.document'
+
+    def is_google_sheet(self, item):
+        """
+        Checks if item is a Google Spreadsheet
+
+        @param GoogleDriveFile
+
+        @return boolean
+        """
+        return item['mimeType'] == 'application/vnd.google-apps.spreadsheet'
+
+    def is_google_slides(self, item):
+        """
+        Checks if item is a Google Slidedeck
+
+        @param GoogleDriveFile
+
+        @return boolean
+        """
+        return item['mimeType'] == 'application/vnd.google-apps.presentation'
+
+    def get_children(self, item_id='root', parents=[], pageToken=""):
+        """
+        Traverses Drive recursively and initiates file download
+
+        @param string item_id
+        @param list parents
+        @param string pageToken
+        """
         path_server = "/" + "/".join(parents).strip("/")
         path = os.path.join(self.backup_path, path_server.strip("/"))
 
         params = {
-            "q": "'" + id + "' in parents",
-            "fields": "nextPageToken,files(id,name,md5Checksum,mimeType)",
+            "q": "'" + item_id + "' in parents",
+            "fields": "nextPageToken,files(id,name,md5Checksum,mimeType,modifiedTime)",
             "pageSize": "100"
         }
 
@@ -231,69 +280,85 @@ class Google_Drive_Backup():
         items = res['body']['files'] if res['status'] == 200 else []
 
         for item in items:
-            path_item = os.path.join(path_server, item['name'])
+            url = self.API_URL + "/" + item['id'] + '?alt=media'
+            filename = item['name']
 
             # Folders
-            if self.is_type(item, 'folder'):
+            if self.is_folder(item):
                 self.get_children(item['id'], parents + [item['name']])
+                continue
             # Google Docs
-            elif self.is_type(item, 'document'):
+            elif self.is_google_doc(item):
                 url = self.API_URL + "/" + item['id'] + "/export?mimeType=application/pdf"
-                self.download(url, path, item['name'] + "_converted.pdf", False)
+                filename = item['name'] + "_converted.pdf"
             # Google Spreadsheets
-            elif self.is_type(item, 'spreadsheet'):
+            elif self.is_google_sheet(item):
                 url = self.API_URL + "/" + item['id'] + "/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                self.download(url, path, item['name'] + ".xlsx", False)
-            # Regular files
-            else:
-                checksum_server = item['md5Checksum'] if 'md5Checksum' in item else ''
-                checksum_local = util.md5_file(os.path.join(path, item['name']))
+                filename = item['name'] + ".xlsx"
+            # Google Slides
+            elif self.is_google_slides(item):
+                url = self.API_URL + "/" + item['id'] + "/export?mimeType=application/pdf"
+                filename = item['name'] + "_converted.pdf"
 
-                if not checksum_server or checksum_server != checksum_local:
-                    url = self.API_URL + "/" + item['id'] + '?alt=media'
-                    self.download(url, path, item['name'], False)
+            # Download
+            if not self.is_backed_up(item, path, filename):
+                self.download(url, path, item, filename)
 
         if 'nextPageToken' in res['body']:
-            self.get_children(id, parents, res['body']['nextPageToken'])
+            self.get_children(item_id, parents, res['body']['nextPageToken'])
 
-    def download(self, url, path, filename="", check_if_exists=False):
+    def is_backed_up(self, item, path, filename):
+        """
+        Checks if file exists and is newer than on Drive
+
+        @param GoogleDriveFile item
+        @param string path
+        @param string filename
+
+        @return boolean
+        """
+        if os.path.isfile(os.path.join(path, filename)):
+            mtime_ts = os.path.getmtime(os.path.join(path, filename))
+            mtime_date = datetime.utcfromtimestamp(mtime_ts).isoformat()
+
+            if item['modifiedTime'] < mtime_date:
+                return True
+
+        return False
+
+
+    def download(self, url, path, item, filename=None):
+        """
+        Downloads item
+
+        @param string url
+        @param string path
+        @param GoogleDriveFile
+        @param string|None filename
+        """
         # Create folder if not exists
         if not os.path.exists(path):
             os.makedirs(path)
-
-        self.logger.info("Downloading {}{}...".format(path, filename))
 
         headers = {
             'Authorization': 'Bearer {}'.format(self.token['access_token'])
         }
 
-        # Check if file already exists
-        if check_if_exists:
-            res = requests.head(url, headers=headers)
-
-            if res.status_code != 200:
-                self.logger.warn("Could not get file info ({})".format(res.status_code))
-                return
-
-            filename = filename if filename else re.search('"(.*?)"', res.headers['Content-Disposition']).group(1)
-
-            if os.path.isfile(os.path.join(path, filename)):
-                return
-
         # Download file
+        self.logger.info("Downloading {}...".format(os.path.join(path, filename)))
+
         http = urllib3.PoolManager()
-        r = http.request('GET', url, headers=headers, preload_content=False)
+        res = http.request('GET', url, headers=headers, preload_content=False)
 
-        if r.status == 200:
-            filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
-
+        if res.status == 200:
+            self.logger.info("Downloaded.")
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:
-                    data = r.read(128)
+                    data = res.read(128)
                     if not data:
                         break
                     out.write(data)
 
-            r.release_conn()
+            res.release_conn()
         else:
-            self.logger.error("Download failed ({}) -> {}".format(str(r.status), str(r.data)))
+            self.logger.error("Download failed ({}) -> {}".format(res.status, str(res.data)))

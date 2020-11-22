@@ -1,16 +1,13 @@
-import os
-import sys
 import subprocess
-import re
 import datetime
 
 from helpers import util
 from helpers import config
 from helpers.log import Logger
 
-class MongoDB_Backup:
-    name = "MongoDB"
-    type = "mongodb"
+class MongoDB:
+    NAME = "MongoDB"
+    TYPE = "mongodb"
 
     def __init__(self):
         self.logger = Logger()
@@ -31,7 +28,7 @@ class MongoDB_Backup:
         db_port = input("Database port [27017]: ") or 27017
         db_pass = input("Database password: ")
 
-        config.set(alias, 'type', self.type)
+        config.set(alias, 'type', self.TYPE)
         config.set(alias, 'backup_path', backup_path)
         config.set(alias, 'db_name', db_name)
         config.set(alias, 'db_user', db_user)

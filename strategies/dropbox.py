@@ -4,13 +4,14 @@ import dropbox
 
 from helpers import util
 from helpers import config
-from helpers import cache
+from helpers.cache import Cache
 from helpers.log import Logger
 
-class Dropbox_Backup:
-    name = "Dropbox"
-    type = "dropbox"
+class Dropbox:
+    NAME = "Dropbox"
+    TYPE = "dropbox"
     alias = ''
+    cache = None
 
     def __init__(self):
         self.logger = Logger()
@@ -34,7 +35,7 @@ class Dropbox_Backup:
         backup_path = input('Backup path (optional): ') or 'backups/' + alias
 
         # Write config
-        config.set(alias, 'type', self.type)
+        config.set(alias, 'type', self.TYPE)
         config.set(alias, 'token', token)
         config.set(alias, 'backup_path', backup_path)
 
@@ -48,6 +49,8 @@ class Dropbox_Backup:
         """
         self.logger.set_source(alias)
         self.logger.info("Starting...")
+
+        self.cache = Cache(alias)
 
         if not config.exists(alias):
             self.logger.error("Alias {} does not exist".format(alias))
@@ -91,10 +94,10 @@ class Dropbox_Backup:
                 destination = os.path.join(self.backup_path, entry.path_display.strip('/'))
                 self.logger.info(entry.path_display)
 
-                hash = cache.get(self.alias, entry.path_display)
+                hash = self.cache.get(entry.path_display)
 
                 if not os.path.isfile(destination) or hash != entry.content_hash:
-                    cache.set(self.alias, entry.path_display, entry.content_hash)
+                    self.cache.set(entry.path_display, entry.content_hash)
                     self.download(entry.path_display, destination)
 
     def download(self, dropbox_path, destination):
@@ -104,7 +107,7 @@ class Dropbox_Backup:
             os.makedirs(parent)
 
         with open(destination, "wb+") as f:
-            metadata, res = self.dbx.files_download(path=dropbox_path)
+            _metadata, res = self.dbx.files_download(path=dropbox_path)
             f.write(res.content)
 
     def check_if_excluded(self, path):
