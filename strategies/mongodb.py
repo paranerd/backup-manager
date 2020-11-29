@@ -95,6 +95,6 @@ class MongoDB:
             cmd += " --username {} --password '{}' --authenticationDatabase admin".format(db_user, db_pass)
 
         try:
-            subprocess.run([cmd], shell=True, check=True)
-        except subprocess.CalledProcessError:
-            self.logger.error("Error downloading")
+            subprocess.run([cmd], shell=True, check=True, capture_output=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error("Error downloading: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))

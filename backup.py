@@ -107,6 +107,9 @@ def show_help():
 if __name__ == "__main__":
     args = parse_args()
 
+    # Initialize Logger
+    logger = Logger()
+
     # Count warnings and errors
     warnings = 0
     errors = 0
@@ -124,7 +127,9 @@ if __name__ == "__main__":
         for alias in aliases:
             entry = config.get(alias)
 
-            if entry and alias != "general":
+            if not entry:
+                logger.error("Alias '{}' does not exist".format(alias))
+            elif alias != "general":
                 module = type_to_module(entry['type'])()
                 res = module.backup(alias)
 

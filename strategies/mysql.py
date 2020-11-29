@@ -92,6 +92,6 @@ class MySQL:
         try:
             # Dump MySQL
             cmd = "mysqldump {} --column-statistics=0 --add-drop-table -h {} -u {} -p{} > {}/{}.sql".format(db_name, db_host, db_user, db_pass, path_to, filename)
-            subprocess.run([cmd], shell=True, check=True)
-        except subprocess.CalledProcessError:
-            self.logger.error("Error dumping")
+            subprocess.run([cmd], shell=True, check=True, capture_output=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error("Error dumping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))

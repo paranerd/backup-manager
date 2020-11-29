@@ -115,17 +115,16 @@ class Server:
         try:
             # Create zip on remote server
             cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"cd {}/.. && zip -r {}/{}.zip `basename {}` {}\"".format(password, user, host, path_from, path_from, filename, path_from, exclude_str)
-            subprocess.run([cmd], shell=True, check=True)
-        except subprocess.CalledProcessError:
-            self.logger.error("Error zipping")
-            return
+            subprocess.run([cmd], shell=True, check=True, capture_output=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error("Error zipping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
 
         try:
             # Pull backups
             cmd = "sshpass -p {} rsync --remove-source-files -a -e ssh {}@{}:{}/{}.zip {}/".format(password, user, host, path_from, filename, path_to)
-            subprocess.run([cmd], shell=True, check=True)
-        except subprocess.CalledProcessError:
-            self.logger.error("Error pulling backups")
+            subprocess.run([cmd], shell=True, check=True, capture_output=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error("Error pulling backups: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
 
     def get_timestring(self):
         """

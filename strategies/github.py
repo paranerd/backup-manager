@@ -119,12 +119,15 @@ class Github:
         # Get current version
         version = self.get_current_version(repository)
 
-        if os.path.exists(os.path.join(self.backup_path, repository['name'])):
-            self.logger.info("Pulling {} ({})...".format(repository['name'], version['number']))
-            subprocess.run(['git', '-C', os.path.join(self.backup_path, repository['name']), "pull", "--rebase", "https://github.com/paranerd/{}.git".format(repository['name'])], stdout=subprocess.PIPE)
-        else:
-            self.logger.info("Cloning {} ({})...".format(repository['name'], version['number']))
-            subprocess.run(['git', '-C', self.backup_path, "clone", "https://github.com/paranerd/{}.git".format(repository['name'])], stdout=subprocess.PIPE)
+        try:
+            if os.path.exists(os.path.join(self.backup_path, repository['name'])):
+                self.logger.info("Pulling {} ({})...".format(repository['name'], version['number']))
+                subprocess.run(['git', '-C', os.path.join(self.backup_path, repository['name']), "pull", "--rebase", "https://github.com/paranerd/{}.git".format(repository['name'])], check=True, capture_output=True)
+            else:
+                self.logger.info("Cloning {} ({})...".format(repository['name'], version['number']))
+                subprocess.run(['git', '-C', self.backup_path, "clone", "https://github.com/paranerd/{}.git".format(repository['name'])], check=True, capture_output=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error("Error synchronizing repo: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
 
     def get_token(self, username, password):
         """
