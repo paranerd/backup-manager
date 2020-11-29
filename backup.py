@@ -128,8 +128,8 @@ if __name__ == "__main__":
                 module = type_to_module(entry['type'])()
                 res = module.backup(alias)
 
-                warnings += res['warnings']
-                errors += res['errors']
+                warnings += int(res['warnings'])
+                errors += int(res['errors'])
     else:
         show_help()
         sys.exit(1)
