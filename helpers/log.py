@@ -13,21 +13,6 @@ name = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
 path = os.path.join(project_path, "log", name) + ".log"
 
 class Logger():
-    buffer = ""
-    source = ""
-    log_levels = {
-        "DEBUG": "DEBUG",
-        "INFO": "INFO",
-        "WARN": "WARN",
-        "ERROR": "ERROR"
-    }
-    counts = {
-        "DEBUG": 0,
-        "INFO": 0,
-        "WARN": 0,
-        "ERROR": 0
-    }
-
     def __init__(self, source=""):
         """
         Constructor
@@ -40,6 +25,16 @@ class Logger():
         # Create logs folder
         util.create_folder(logs_path)
 
+        # Init log counts
+        self.counts = {
+            "DEBUG": 0,
+            "INFO": 0,
+            "WARN": 0,
+            "ERROR": 0
+        }
+
+        self.buffer = ""
+
     @staticmethod
     def get_path():
         """
@@ -48,7 +43,7 @@ class Logger():
         @return string
         """
         return path
-    
+
     def set_source(self, source):
         """
         Sets log source
@@ -72,7 +67,7 @@ class Logger():
         @param string msg
         """
         self.counts['DEBUG'] += 1
-        self._write(msg, self.log_levels['DEBUG'])
+        self._write(msg, 'DEBUG')
 
     def info(self, msg=""):
         """
@@ -81,7 +76,7 @@ class Logger():
         @param string msg
         """
         self.counts['INFO'] += 1
-        self._write(msg, self.log_levels['INFO'])
+        self._write(msg, 'INFO')
 
     def warn(self, msg=""):
         """
@@ -90,7 +85,7 @@ class Logger():
         @param string msg
         """
         self.counts['WARN'] += 1
-        self._write(msg, self.log_levels['WARN'])
+        self._write(msg, 'WARN')
 
     def error(self, msg=""):
         """
@@ -99,7 +94,7 @@ class Logger():
         @param string msg
         """
         self.counts['ERROR'] += 1
-        self._write(msg, self.log_levels['ERROR'])
+        self._write(msg, 'ERROR')
 
     def _write(self, msg, level):
         """
