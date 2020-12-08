@@ -73,7 +73,11 @@ def format_mail_body(warnings, errors):
 
     @return string
     """
-    return "<h1>Backup My Accounts</h1><p>Backup complete</p><p>{} Warnings</p><p>{} Errors</p>".format(warnings, errors)
+    body = "<h1>Backup complete</h1>"
+    body += "<p>{} Warning(s)</p>".format(warnings)
+    body += "<p>{} Error(s)</p>".format(errors)
+
+    return body
 
 def show_add_menu():
     """
