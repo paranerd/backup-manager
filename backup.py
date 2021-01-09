@@ -14,6 +14,7 @@ from strategies.server import Server
 from strategies.mongodb import MongoDB
 
 from helpers import util
+from helpers import mail
 from helpers.log import Logger
 from helpers import config
 
@@ -152,7 +153,6 @@ if __name__ == "__main__":
         shutil.rmtree(tmp_path)
 
     # Mail log
-    mail_body = format_mail_body(warnings, errors)
-
-    if config.get('general', 'mail_user') and config.get('general', 'mail_pass'):
-        util.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), [config.get('general', 'mail_user')], "Backup My Accounts", mail_body, [Logger.get_path()])
+    if config.get('general', 'mail_user') and config.get('general', 'mail_pass') and os.path.exists(Logger.get_path()):
+        mail_body = format_mail_body(warnings, errors)
+        mail.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), [config.get('general', 'mail_user')], "Backup My Accounts", mail_body, [Logger.get_path()])
