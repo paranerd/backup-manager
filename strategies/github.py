@@ -39,8 +39,8 @@ class Github:
         # Read username
         username = input('GitHub username: ')
 
-        # Read password
-        password = getpass.getpass('GitHub password: ')
+        # Read token
+        token = getpass.getpass('GitHub token: ')
 
         # Read backup path
         backup_path = input('Backup path (optional): ') or 'backups/' + alias
@@ -48,12 +48,6 @@ class Github:
         # Read archive choice
         archive = input("Archive? [y/N]: ")
         archive = archive != None and archive.lower() == 'y'
-
-        try:
-            # Obtain token
-            token = self.get_token(username, password)
-        except Exception as e:
-            raise Exception("Could not obtain access token. Please check your credentials. {}".format(e))
 
         # Write config
         config.set(alias, 'type', self.TYPE)
@@ -109,23 +103,6 @@ class Github:
                 'errors': self.logger.count_errors(),
                 'warnings': self.logger.count_warnings()
             }
-
-    def get_token(self, username, password):
-        """
-        Get auth token
-
-        @param string username
-        @param string password
-        @return string
-        """
-        print("Getting token...")
-
-        res = requests.post(self.API_URL + "/authorizations", auth = (username, password), data = json.dumps({'note': 'backup_debug', 'note_url': 'backup_my_accounts_debug'}))
-
-        if res.status_code != 201:
-            raise Exception("Error obtaining token: " + str(res.json()))
-
-        return res.json()['token']
 
     def get_repositories(self, page_url=""):
         """
