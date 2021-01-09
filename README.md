@@ -40,7 +40,7 @@ $ python3 backup.py --backup [alias1, alias2]
 
 If you provide aliases, only those accounts will be backed up.
 
-## Setup E-Mail notifications
+## Set up E-Mail notifications
 Note that this feature will currently only work with Gmail
 
 On first start the script will ask for Gmail credentials for notifications.
@@ -49,7 +49,7 @@ If you choose to enable this feature, enter your Gmail-Account as "Mail user" an
 
 Check out [this link](https://support.google.com/accounts/answer/185833) for how to obtain an app password.
 
-## Setup Google-Backup
+## Set up Google-Backup
 1. [Open google cloud console](https://console.developers.google.com/)
 2. Choose or create a project
 3. [Activate Drive API](https://console.developers.google.com/apis/library/drive.googleapis.com)
@@ -63,7 +63,7 @@ Check out [this link](https://support.google.com/accounts/answer/185833) for how
 11. Download the client ID JSON
 12. When prompted by the script, paste the content of that json
 
-## Setup Dropbox-Backup
+## Set up Dropbox-Backup
 1. [Open Dropbox developers page](https://www.dropbox.com/developers/apps)
 2. Click "Create app"
 3. Select "Dropbox API"
@@ -73,12 +73,24 @@ Check out [this link](https://support.google.com/accounts/answer/185833) for how
 7. Under "Generated access token" click "Generate"
 8. When prompted by the script, paste that token
 
+## Set up GitHub-Backup
+Follow [this documentation](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token#creating-a-token) to create your personal access token.
+
+You will be prompted for it when adding a GitHub backup
+
 ## How it works
 1. GitHub
     - Archive
         - Goes through all your repositories and backs up the latest release
         - Saves each repository as [repository_name]-[tag].zip (e.g. my-project-1.0.zip)
         - Older versions of the same repository will be removed (so there's only the most recent version backed up)
+    - Non-archive
+        - Uses `git` (requires `git` to be set up) to `clone` or `pull --rebase`
+2. GitHub Gist
+    - Archive
+        - Goes through all your gists and backs up the latest release
+        - Saves each repository as [gist-id]-[name of first file]-[hashed-update-datetime].zip (e.g. my-project-1.0.zip)
+        - Older versions of the same gist will be removed (so there's only the most recent version backed up)
     - Non-archive
         - Uses `git` (requires `git` to be set up) to `clone` or `pull --rebase`
 2. Google Drive

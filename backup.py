@@ -1,9 +1,10 @@
 import os
 import sys
 import argparse
-import json
+import shutil
 
 from strategies.github import Github
+from strategies.github_gist import GithubGist
 from strategies.googledrive import GoogleDrive
 from strategies.googlephotos import GooglePhotos
 from strategies.wordpress import Wordpress
@@ -18,6 +19,7 @@ from helpers import config
 
 modules = [
     Github,
+    GithubGist,
     GooglePhotos,
     GoogleDrive,
     Wordpress,
@@ -142,6 +144,12 @@ if __name__ == "__main__":
     else:
         show_help()
         sys.exit(1)
+
+    # Clean up
+    tmp_path = util.get_tmp_path()
+
+    if os.path.isdir(tmp_path):
+        shutil.rmtree(tmp_path)
 
     # Mail log
     mail_body = format_mail_body(warnings, errors)
