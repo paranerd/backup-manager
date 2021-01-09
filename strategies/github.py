@@ -110,25 +110,6 @@ class Github:
                 'warnings': self.logger.count_warnings()
             }
 
-    def sync(self, repository):
-        """
-        Clone or pull repository
-
-        @param dict repository
-        """
-        # Get current version
-        version = self.get_current_version(repository)
-
-        try:
-            if os.path.exists(os.path.join(self.backup_path, repository['name'])):
-                self.logger.info("Pulling {} ({})...".format(repository['name'], version['number']))
-                subprocess.run(['git', '-C', os.path.join(self.backup_path, repository['name']), "pull", "--rebase", "https://github.com/paranerd/{}.git".format(repository['name'])], check=True, capture_output=True)
-            else:
-                self.logger.info("Cloning {} ({})...".format(repository['name'], version['number']))
-                subprocess.run(['git', '-C', self.backup_path, "clone", "https://github.com/paranerd/{}.git".format(repository['name'])], check=True, capture_output=True)
-        except subprocess.CalledProcessError as err:
-            self.logger.error("Error synchronizing repo: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
-
     def get_token(self, username, password):
         """
         Get auth token
@@ -154,18 +135,25 @@ class Github:
         @return list
         """
         repositories = []
-        url = page_url if page_url else self.API_URL + "/users/" + self.username + "/repos"
-        res = requests.get(url, auth=(self.username,self.token))
+        url = page_url if page_url else "{api_url}/users/{username}/repos".format(api_url=self.API_URL, username=self.username)
+        res = requests.get(url, auth=(self.username, self.token))
 
         if res.status_code == 200:
             for repository in res.json():
                 repositories.append(repository)
 
-        if 'Link' in res.headers and res.headers['Link'].find('rel="next"') != -1:
-            page_url = re.search('\<([^;]+)\>; rel=\"next\"', res.headers['Link']).group(1)
-            repositories.extend(self.get_repositories(page_url))
+        next_page_token = self.get_next_page_url(res.headers)
+
+        if next_page_token:
+            repositories.extend(self.get_repositories(next_page_token))
 
         return repositories
+
+    def get_next_page_url(self, headers):
+        if 'Link' in headers and headers['Link'].find('rel="next"') != -1:
+            return re.search('\<([^;]+)\>; rel=\"next\"', headers['Link']).group(1)
+
+        return None
 
     def get_current_version(self, repository):
         """
@@ -210,18 +198,18 @@ class Github:
         @param dict repository
         @param string check_if_exists
         """
-        # Check if file exists
-        if check_if_exists and os.path.isfile(os.path.join(self.backup_path, repository['name'])):
-            return
-
         # Get current version
         version = self.get_current_version(repository)
 
-        # Get URL
-        url = version['url']
-
         # Determine filename
         filename = repository['name'] + "-" + version['number'] + ".zip"
+
+        # Check if file exists
+        if check_if_exists and os.path.isfile(os.path.join(self.backup_path, filename)):
+            return
+
+        # Get URL
+        url = version['url']
 
         # Delete older version
         self.delete_older_versions(self.backup_path, repository['name'])
@@ -238,3 +226,22 @@ class Github:
         with urllib.request.urlopen(url) as response, open(os.path.join(self.backup_path, filename), 'wb') as out_file:
             data = response.read()
             out_file.write(data)
+
+    def sync(self, repository):
+        """
+        Clone or pull repository
+
+        @param dict repository
+        """
+        # Get current version
+        version = self.get_current_version(repository)
+
+        try:
+            if os.path.exists(os.path.join(self.backup_path, repository['name'])):
+                self.logger.info("Pulling {} ({})...".format(repository['name'], version['number']))
+                subprocess.run(['git', '-C', os.path.join(self.backup_path, repository['name']), "pull", "--rebase", repository['clone_url']], check=True, capture_output=True)
+            else:
+                self.logger.info("Cloning {} ({})...".format(repository['name'], version['number']))
+                subprocess.run(['git', '-C', self.backup_path, "clone", repository['clone_url']], check=True, capture_output=True)
+        except subprocess.CalledProcessError as err:
+            self.logger.error("Error synchronizing repo: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
