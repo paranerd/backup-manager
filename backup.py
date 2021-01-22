@@ -12,6 +12,7 @@ from strategies.dropbox import Dropbox
 from strategies.mysql import MySQL
 from strategies.server import Server
 from strategies.mongodb import MongoDB
+from strategies.postgresql import PostgreSQL
 
 from helpers import util
 from helpers import mail
@@ -27,7 +28,8 @@ modules = [
     Dropbox,
     MySQL,
     Server,
-    MongoDB
+    MongoDB,
+    PostgreSQL
 ]
 
 def type_to_module(type):

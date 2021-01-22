@@ -15,14 +15,12 @@ Google and Dropbox will need some minor preparations, see below for details
 
 ## Prerequisites
 ```sh
-sudo apt install python3 python3-urllib3 sshpass mysql-clients
+sudo apt install python3 python3-urllib3 sshpass mysql-clients postgresql-client git
 ```
 
 ```sh
 pip3 install -r requirements.txt
 ```
-
-If you want to back up GitHub non-archived, `git` must also be installed and configured
 
 ## Add accounts
 To add an account to backup run
