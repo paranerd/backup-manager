@@ -104,8 +104,6 @@ def cleanup_versions(dir, versions, prefix=""):
     # Filter by modification date descending
     folders.sort(key=lambda x: os.path.getmtime(x), reverse=True)
 
-    #print(folders)
-
     for folder in folders[versions:]:
         remove(folder)
 
