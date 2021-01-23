@@ -23,6 +23,7 @@ class MySQL:
             alias = input('Alias: ')
 
         backup_path = input('Backup path (optional): ') or 'backups/' + alias
+        versions = input("Keep versions [1]: ") or 1
         db_name = input("Database name: ")
         db_user = input("Database user: ")
         db_host = input("Database host: ")
@@ -30,6 +31,7 @@ class MySQL:
 
         config.set(alias, 'type', self.TYPE)
         config.set(alias, 'backup_path', backup_path)
+        config.set(alias, 'versions', int(versions))
         config.set(alias, 'db_name', db_name)
         config.set(alias, 'db_user', db_user)
         config.set(alias, 'db_host', db_host)
@@ -58,9 +60,8 @@ class MySQL:
             self.logger.error("Alias {} does not exist".format(alias))
             return
 
-        filename = self.get_timestring()
-
         backup_path = config.get(alias, 'backup_path')
+        versions = config.get(alias, 'versions')
         db_name = config.get(alias, 'db_name')
         db_user = config.get(alias, 'db_user')
         db_host = config.get(alias, 'db_host')
@@ -70,8 +71,14 @@ class MySQL:
             # Make sure backup path exists
             util.create_backup_path(backup_path, alias)
 
+            # Determine filename
+            filename = alias if versions < 2 else alias + "_" + self.get_timestring()
+
             # Download database
             self.download(db_name, db_host, db_user, db_pass, backup_path, filename)
+
+            # Remove old versions
+            util.cleanup_versions(backup_path, versions, alias)
 
             # Done
             self.logger.info("Done")
@@ -94,4 +101,4 @@ class MySQL:
             cmd = "mysqldump {} --column-statistics=0 --add-drop-table -h {} -u {} -p{} > {}/{}.sql".format(db_name, db_host, db_user, db_pass, path_to, filename)
             subprocess.run([cmd], shell=True, check=True, capture_output=True)
         except subprocess.CalledProcessError as err:
-            self.logger.error("Error dumping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
+            raise Exception("Error dumping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
