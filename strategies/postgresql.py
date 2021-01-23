@@ -108,7 +108,7 @@ class PostgreSQL:
 
         try:
             # Dump database using pg_dump
-            cmd = "pg_dump postgresql://{}:{}@{}:{}/{} -f {}/{}.dump".format(db_user, db_pass, db_host, db_port, db_name, path_to, filename)
+            cmd = "pg_dump -Fc postgresql://{}:{}@{}:{}/{} -f {}/{}.dump".format(db_user, db_pass, db_host, db_port, db_name, path_to, filename)
 
             subprocess.run([cmd], shell=True, check=True, capture_output=True)
         except subprocess.CalledProcessError as err:
