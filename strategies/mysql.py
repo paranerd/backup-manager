@@ -27,6 +27,7 @@ class MySQL:
         db_name = input("Database name: ")
         db_user = input("Database user: ")
         db_host = input("Database host: ")
+        db_port = input("Database port [3306]: ") or 3306
         db_pass = input("Database password: ")
 
         config.set(alias, 'type', self.TYPE)
@@ -35,6 +36,7 @@ class MySQL:
         config.set(alias, 'db_name', db_name)
         config.set(alias, 'db_user', db_user)
         config.set(alias, 'db_host', db_host)
+        config.set(alias, 'db_port', db_port)
         config.set(alias, 'db_pass', db_pass)
 
         print("Added.")
@@ -65,6 +67,7 @@ class MySQL:
         db_name = config.get(alias, 'db_name')
         db_user = config.get(alias, 'db_user')
         db_host = config.get(alias, 'db_host')
+        db_port = config.get(alias, 'db_port')
         db_pass = config.get(alias, 'db_pass')
 
         try:
@@ -75,7 +78,7 @@ class MySQL:
             filename = alias if versions < 2 else alias + "_" + self.get_timestring()
 
             # Download database
-            self.download(db_name, db_host, db_user, db_pass, backup_path, filename)
+            self.download(db_name, db_host, db_user, db_pass, backup_path, filename, db_port)
 
             # Remove old versions
             util.cleanup_versions(backup_path, versions, alias)
@@ -92,13 +95,24 @@ class MySQL:
                 'warnings': self.logger.count_warnings()
             }
 
-    def download(self, db_name, db_host, db_user, db_pass, path_to, filename):
+    def download(self, db_name, db_host, db_user, db_pass, path_to, filename, db_port=3306):
+        """
+        Uses mysqldump to dump MySQL database to file
+
+        @param string db_name
+        @param string db_host
+        @param string db_user
+        @param string db_pass
+        @param string path_to
+        @param string filename
+        @param string db_port
+        """
         # Sanitize password
         db_pass = re.escape(db_pass)
 
         try:
             # Dump MySQL
-            cmd = "mysqldump {} --column-statistics=0 --add-drop-table -h {} -u {} -p{} > {}/{}.sql".format(db_name, db_host, db_user, db_pass, path_to, filename)
+            cmd = "mysqldump {} --column-statistics=0 --add-drop-table -h {} -P {} -u {} -p{} > {}/{}.sql".format(db_name, db_host, db_port, db_user, db_pass, path_to, filename)
             subprocess.run([cmd], shell=True, check=True, capture_output=True)
         except subprocess.CalledProcessError as err:
             raise Exception("Error dumping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
