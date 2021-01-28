@@ -115,3 +115,14 @@ def get_tmp_path():
     Path(tmp_path).mkdir(parents=True, exist_ok=True)
 
     return tmp_path
+
+def create_tmp_folder():
+    """
+    Creates a folder in the tmp folder
+
+    @return string
+    """
+    tmp_path = os.path.join(get_tmp_path(), md5(str(datetime.datetime.now().timestamp())))
+    Path(tmp_path).mkdir(parents=True, exist_ok=True)
+
+    return tmp_path
