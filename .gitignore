@@ -2,6 +2,7 @@ tokens/
 backups/
 cache/
 log/
+tmp/
 config.json
 backup.log
 __pycache__/
