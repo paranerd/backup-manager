@@ -2,6 +2,7 @@ import os
 import subprocess
 import re
 import datetime
+import shutil
 
 from helpers import util
 from helpers import config
@@ -71,9 +72,6 @@ class Server:
             # Make sure backup path exists
             util.create_backup_path(backup_path, alias)
 
-            #destination = backup_path if versions < 2 else os.path.join(backup_path, alias + "_" + self.get_timestring())
-            #remainder = destination.replace(backup_path, "").strip("/")
-
             if archive:
                 filename = alias if versions < 2 else alias + "_" + self.get_timestring()
                 self.archive(ssh_host, ssh_user, ssh_pass, path_from, backup_path, filename, exclude)
@@ -96,6 +94,16 @@ class Server:
             }
 
     def sync(self, host, user, password, path_from, path_to, exclude=[]):
+        """
+        Syncs files using rsync
+
+        @param string host
+        @param string user
+        @param string password
+        @param string path_from
+        @param string path_to
+        @param list exclude
+        """
         # Escape password
         password = re.escape(password)
         exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
@@ -105,26 +113,33 @@ class Server:
         subprocess.run([cmd], shell=True)
 
     def archive(self, host, user, password, path_from, path_to, filename, exclude=[]):
-        # Get name of folder to be backed up
-        basename = os.path.basename(path_from)
+        """
+        Downloads files to tmp using rsync and creates a zip archive from it
 
+        @param string host
+        @param string user
+        @param string password
+        @param string path_from
+        @param string path_to
+        @param string filename
+        @param list exclude
+        """
         # Escape password
         password = re.escape(password)
-        exclude_str = ' '.join(['-x \'' + os.path.join(basename, x) + '*\'' if x.endswith('/') else '-x \'' + os.path.join(basename, x) + '\'' for x in exclude])
+        exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
+
+        # Create temporary folder
+        tmp_path = util.create_tmp_folder()
 
         try:
-            # Create zip on remote server
-            cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"cd {}/.. && zip -r {}/{}.zip `basename {}` {}\"".format(password, user, host, path_from, path_from, filename, path_from, exclude_str)
+            cmd = 'sshpass -p {} rsync -a {} -e ssh {}@{}:{}/ {}'.format(password, exclude_str, user, host, path_from, tmp_path)
             subprocess.run([cmd], shell=True, check=True, capture_output=True)
         except subprocess.CalledProcessError as err:
             self.logger.error("Error zipping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
 
-        try:
-            # Pull backups
-            cmd = "sshpass -p {} rsync --remove-source-files -a -e ssh {}@{}:{}/{}.zip {}/".format(password, user, host, path_from, filename, path_to)
-            subprocess.run([cmd], shell=True, check=True, capture_output=True)
-        except subprocess.CalledProcessError as err:
-            self.logger.error("Error pulling backups: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
+        # Create archive from tmp
+        destination = os.path.join(path_to, filename)
+        shutil.make_archive(destination, 'zip', tmp_path)
 
     def get_timestring(self):
         """
