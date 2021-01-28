@@ -175,8 +175,7 @@ class GithubGist:
         version = self.get_current_version(gist)
 
         # Create temporary folder
-        tmp_path = os.path.join(util.get_tmp_path(), gist['id'])
-        Path(tmp_path).mkdir(parents=True, exist_ok=True)
+        tmp_path = util.create_tmp_folder()
 
         # Determine destination filename
         first_filename = next(iter(gist['files']))
