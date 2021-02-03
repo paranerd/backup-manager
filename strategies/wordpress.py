@@ -35,7 +35,10 @@ class Wordpress:
         db_name = input("Database name: ")
         db_user = input("Database user: ")
         db_host = input("Database host [{}]: ".format(ssh_host)) or ssh_host
+        db_port = input("Database port [3306]: ") or 3306
         db_pass = input("Database password: ")
+        zip_on_server = input("Zip on server? [y/N]: ")
+        zip_on_server = zip_on_server != None and zip_on_server.lower() == 'y'
 
         config.set(alias, 'type', self.TYPE)
         config.set(alias, 'webroot', webroot)
@@ -47,7 +50,9 @@ class Wordpress:
         config.set(alias, 'db_name', db_name)
         config.set(alias, 'db_user', db_user)
         config.set(alias, 'db_host', db_host)
+        config.set(alias, 'db_port', db_port)
         config.set(alias, 'db_pass', db_pass)
+        config.set(zip_on_server, 'zip_on_server', zip_on_server)
 
         print("Added.")
 
@@ -91,7 +96,9 @@ class Wordpress:
         db_name = config.get(alias, 'db_name')
         db_user = config.get(alias, 'db_user')
         db_host = config.get(alias, 'db_host')
+        db_port = config.get(alias, 'db_port')
         db_pass = config.get(alias, 'db_pass')
+        zip_on_server = config.get(alias, 'zip_on_server')
 
         try:
             # Make sure backup path exists
@@ -99,7 +106,8 @@ class Wordpress:
 
             # Check if we have all necessary information
             if not webroot or not backup_path or not ssh_user or not ssh_host \
-                or not ssh_pass or not db_name or not db_user or not db_host or not db_pass:
+                or not ssh_pass or not db_name or not db_user or not db_host \
+                or not db_pass or not db_port:
                 raise Exception("Config corrupted")
 
             # Determine version name
@@ -110,11 +118,11 @@ class Wordpress:
 
             # Backup database
             db = MySQL()
-            db.download(db_name, db_host, db_user, db_pass, path_to, version_name)
+            db.download(db_name, db_host, db_user, db_pass, path_to, version_name, db_port)
 
             # Backup files
             server = Server()
-            server.archive(ssh_host, ssh_user, ssh_pass, webroot, path_to, version_name)
+            server.archive(ssh_host, ssh_user, ssh_pass, webroot, path_to, version_name, [], zip_on_server)
 
             # Remove old versions
             util.cleanup_versions(backup_path, versions, alias)
