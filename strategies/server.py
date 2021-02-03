@@ -32,6 +32,8 @@ class Server:
         versions = input("Keep versions [1]: ") or 1
         archive = input("Archive? [y/N]: ")
         archive = archive != None and archive.lower() == 'y'
+        zip_on_server = False if not archive else input("Zip on server? [y/N]: ")
+        zip_on_server = zip_on_server != None and zip_on_server.lower() == 'y'
 
         config.set(alias, 'type', self.TYPE)
         config.set(alias, 'path', path)
@@ -41,6 +43,7 @@ class Server:
         config.set(alias, 'ssh_pass', ssh_pass)
         config.set(alias, 'versions', int(versions))
         config.set(alias, 'archive', archive)
+        config.set(zip_on_server, 'zip_on_server', zip_on_server)
         config.set(alias, 'exclude', [])
 
         print("Added.")
@@ -66,6 +69,7 @@ class Server:
         ssh_pass = config.get(alias, 'ssh_pass')
         versions = config.get(alias, 'versions')
         archive = config.get(alias, 'archive')
+        zip_on_server = config.get(alias, 'zip_on_server')
         exclude = config.get(alias, 'exclude', [])
 
         try:
@@ -74,7 +78,7 @@ class Server:
 
             if archive:
                 filename = alias if versions < 2 else alias + "_" + self.get_timestring()
-                self.archive(ssh_host, ssh_user, ssh_pass, path_from, backup_path, filename, exclude)
+                self.archive(ssh_host, ssh_user, ssh_pass, path_from, backup_path, filename, exclude, zip_on_server)
             else:
                 path_to = backup_path if versions < 2 else os.path.join(backup_path, alias + "_" + self.get_timestring())
                 self.sync(ssh_host, ssh_user, ssh_pass, path_from, path_to, exclude)
@@ -112,7 +116,7 @@ class Server:
         cmd = "sshpass -p {} rsync -a {} -e 'ssh -o StrictHostKeyChecking=no' {}@{}:{} {}/".format(password, exclude_str, user, host, path_from, path_to)
         subprocess.run([cmd], shell=True)
 
-    def archive(self, host, user, password, path_from, path_to, filename, exclude=[]):
+    def archive(self, host, user, password, path_from, path_to, filename, exclude=[], zip_on_server=False):
         """
         Downloads files to tmp using rsync and creates a zip archive from it
 
@@ -128,18 +132,34 @@ class Server:
         password = re.escape(password)
         exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
 
-        # Create temporary folder
-        tmp_path = util.create_tmp_folder()
+        if zip_on_server:
+            try:
+                # Create zip on remote server
+                cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"cd {}/.. && zip -r {}/{}.zip `basename {}` {}\"".format(password, user, host, path_from, path_from, filename, path_from, exclude_str)
+                subprocess.run([cmd], shell=True, check=True, capture_output=True)
+            except subprocess.CalledProcessError as err:
+                self.logger.error("Error zipping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
 
-        try:
-            cmd = 'sshpass -p {} rsync -a {} -e ssh {}@{}:{}/ {}'.format(password, exclude_str, user, host, path_from, tmp_path)
-            subprocess.run([cmd], shell=True, check=True, capture_output=True)
-        except subprocess.CalledProcessError as err:
-            self.logger.error("Error zipping: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
+            try:
+                # Pull backups
+                cmd = "sshpass -p {} rsync --remove-source-files -a -e ssh {}@{}:{}/{}.zip {}/".format(password, user, host, path_from, filename, path_to)
+                subprocess.run([cmd], shell=True, check=True, capture_output=True)
+            except subprocess.CalledProcessError as err:
+                self.logger.error("Error pulling backups: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
+        else:
+            # Create temporary folder
+            tmp_path = util.create_tmp_folder()
 
-        # Create archive from tmp
-        destination = os.path.join(path_to, filename)
-        shutil.make_archive(destination, 'zip', tmp_path)
+            try:
+                cmd = 'sshpass -p {} rsync -a {} -e ssh {}@{}:{}/ {}'.format(password, exclude_str, user, host, path_from, tmp_path)
+                print(cmd)
+                subprocess.run([cmd], shell=True, check=True, capture_output=True)
+            except subprocess.CalledProcessError as err:
+                self.logger.error("Error pulling backups: {} STDOUT: {})".format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
+
+            # Create archive from tmp
+            destination = os.path.join(path_to, filename)
+            shutil.make_archive(destination, 'zip', tmp_path)
 
     def get_timestring(self):
         """
