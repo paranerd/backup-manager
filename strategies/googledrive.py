@@ -23,7 +23,7 @@ class GoogleDrive():
     token = ''
     backup_path = ''
     alias = ''
-    excluded = []
+    exclude = []
 
     def __init__(self):
         self.logger = Logger()
@@ -194,14 +194,14 @@ class GoogleDrive():
 
     def check_if_excluded(self, path):
         """
-        Checks if file is to be excluded from download
+        Check if file is to be excluded from download.
 
         @param string path
 
         @return boolean
         """
-        for e in self.exclude:
-            if re.match(e, path):
+        for pattern in self.exclude:
+            if re.match(pattern, path):
                 return True
 
         return False
@@ -259,7 +259,7 @@ class GoogleDrive():
 
         params = {
             "q": "'" + item_id + "' in parents",
-            "fields": "nextPageToken,files(id,name,md5Checksum,mimeType,modifiedTime)",
+            "fields": "nextPageToken,files(id,name,md5Checksum,mimeType,modifiedTime,trashed)",
             "pageSize": "100"
         }
 
@@ -281,10 +281,18 @@ class GoogleDrive():
 
         for item in items:
             url = self.API_URL + "/" + item['id'] + '?alt=media'
+            path_item = os.path.join(path_server, item['name'])
             filename = item['name']
 
+            # Excluded or trashed
+            if self.check_if_excluded(path_item) or item['trashed']:
+                self.logger.info("Excluding {}".format(path_item))
+
+                if item['trashed']:
+                    self.logger.info("... because it is trashed.")
+                continue
             # Folders
-            if self.is_folder(item):
+            elif self.is_folder(item):
                 self.get_children(item['id'], parents + [item['name']])
                 continue
             # Google Docs
