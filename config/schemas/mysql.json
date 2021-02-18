@@ -1,0 +1,30 @@
+[
+    {
+        "key": "db_name",
+        "prompt": "Database name"
+    },
+    {
+        "key": "db_user",
+        "prompt": "Database user"
+    },
+    {
+        "key": "db_host",
+        "prompt": "Database host"
+    },
+    {
+        "key": "db_port",
+        "prompt": "Database port",
+        "type": "int",
+        "default": 3306
+    },
+    {
+        "key": "db_pass",
+        "prompt": "Database password"
+    },
+    {
+        "key": "versions",
+        "prompt": "Keep versions",
+        "type": "int",
+        "default": 1
+    }
+]

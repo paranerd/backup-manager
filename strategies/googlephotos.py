@@ -1,3 +1,5 @@
+"""Backup strategy for Google Photos."""
+
 import os
 import re
 import json
@@ -10,100 +12,61 @@ import urllib3
 from urllib3.contrib import pyopenssl
 pyopenssl.extract_from_urllib3()
 
-from helpers import util
-from helpers import config
 from helpers.cache import Cache
-from helpers.log import Logger
+from helpers.strategy import Strategy
 
-class GooglePhotos():
-    NAME = "Google Photos"
-    TYPE = "googlephotos"
-    API_URL = "https://photoslibrary.googleapis.com/v1"
-    credentials = ''
-    token = ''
-    backup_path = ''
-    excluded = []
-    alias = ''
+class GooglePhotos(Strategy):
+    """Backup strategy for Google Photos."""
+    NAME = 'Google Photos'
+    TYPE = 'googlephotos'
+    API_URL = 'https://photoslibrary.googleapis.com/v1'
     cache = None
 
-    def __init__(self):
+    def add(self, override={}):
         """
-        Constructor
-        """
-        self.logger = Logger()
-        self.cache = Cache(self.alias)
+        Add Google Photos account.
 
-    def add(self):
+        @param dict override (optional)
         """
-        Add Google Photos account
-        """
-        # Read alias
-        self.alias = input('Alias: ')
+        self.alias = super().add()
 
-        # Check if alias exists
-        while config.exists(self.alias):
-            print("This alias already exists")
-            self.alias = input('Alias: ')
+        if not self.alias:
+            return
 
         # Show instructions
         self.show_instructions()
 
         credentials_str = input('Paste content of credentials file: ')
-        self.credentials = json.loads(credentials_str)['installed']
+        self.config.set('credentials', json.loads(credentials_str)['installed'])
 
         code = self.request_code()
         token = self.request_token(code)
 
-        # Read backup path
-        backup_path = input('Backup path (optional): ') or 'backups/' + self.alias
-
         # Write config
-        config.set(self.alias, 'type', self.TYPE)
-        config.set(self.alias, 'credentials', self.credentials)
-        config.set(self.alias, 'token', token)
-        config.set(self.alias, 'backup_path', backup_path)
+        self.config.set('token', token)
 
-        print("Added.")
+    def start_backup(self):
+        """
+        Start backup.
+        """
+        self.logger.info('Getting albums...')
 
-    def backup(self, alias):
-        self.logger.set_source(alias)
-        self.logger.info("Starting...")
+        # Set cache
+        self.cache = Cache(self.alias)
 
-        if not config.exists(alias):
-            self.logger.error("Alias {} does not exist".format(alias))
-            return
+        # Get all albums
+        albums = self.get_albums()
 
-        self.alias = alias
-        self.credentials = config.get(alias, 'credentials', None)
-        self.token = config.get(alias, 'token')
-        self.backup_path = config.get(alias, 'backup_path')
-        self.excluded = config.get(alias, 'exclude') or []
-
-        # Make sure backup path exists
-        util.create_backup_path(self.backup_path, alias)
-
-        try:
-            self.logger.info("Getting albums...")
-            albums = self.get_albums()
-
-            for album in albums:
-                if not self.check_if_excluded(album['title']):
-                    self.logger.info("Scanning {} for new items...".format(album['title']))
-                    self.get_album_content(album['id'], album['title'])
-
-            # Done
-            self.logger.info("Done")
-        except KeyboardInterrupt:
-            self.logger.warn("Interrupted")
-        except Exception as e:
-            self.logger.error(e)
-        finally:
-            return {
-                'errors': self.logger.count_errors(),
-                'warnings': self.logger.count_warnings()
-            }
+        # Backup albums
+        for album in albums:
+            if not self.check_if_excluded(album['title']):
+                self.logger.info('Scanning {} for new items...'.format(album['title']))
+                self.get_album_content(album['id'], album['title'])
 
     def show_instructions(self):
+        """
+        Print instructions on how to set up Google Cloud Project.
+        """
         print()
         print('If you already have an OAuth-Client-ID, download the JSON')
         print('Otherwise, here\'s how to get credentials:')
@@ -120,36 +83,55 @@ class GooglePhotos():
         print()
 
     def build_auth_uri(self):
-        auth_uri = self.credentials['auth_uri']
-        auth_uri += "?response_type=code"
-        auth_uri += "&redirect_uri=" + quote_plus(self.credentials['redirect_uris'][0])
-        auth_uri += "&client_id=" + quote_plus(self.credentials['client_id'])
-        auth_uri += "&scope=https://www.googleapis.com/auth/photoslibrary"
-        auth_uri += "&access_type=offline"
-        auth_uri += "&approval_prompt=auto"
+        """
+        Build auth URI for requesting token.
+
+        @return string
+        """
+        auth_uri = self.config.get('credentials.auth_uri')
+        auth_uri += '?response_type=code'
+        auth_uri += '&redirect_uri=' + quote_plus(self.config.get('credentials.redirect_uris.0'))
+        auth_uri += '&client_id=' + quote_plus(self.config.get('credentials.client_id'))
+        auth_uri += '&scope=https://www.googleapis.com/auth/photoslibrary'
+        auth_uri += '&access_type=offline'
+        auth_uri += '&approval_prompt=auto'
 
         return auth_uri
 
     def request_code(self):
+        """
+        Request code from auth URI to obtain token.
+
+        @return string
+        """
         # Build auth uri
         auth_uri = self.build_auth_uri()
 
         # Try opening in browser
-        webbrowser.open(auth_uri, new=2)
+        webbrowser.open(auth_uri, new=1)
 
         print()
-        print("If your browser does not open, go to this website:")
+        print('If your browser does not open, go to this website:')
         print(auth_uri)
         print()
 
         # Return code
         return input('Enter code: ')
 
-    def execute_request(self, url, headers={}, params={}, method="GET", retry=False):
-        if "access_token" in self.token:
+    def execute_request(self, url, headers={}, params={}, method='GET', is_retry=False):
+        """
+        Call Photos API.
+
+        @param string url
+        @param dict headers (optional)
+        @param dict params (optional)
+        @param string method (optional)
+        @param bool is_retry (optional)
+        """
+        if 'access_token' in self.config.get('token', {}):
             # Set Authorization-Header
             auth_header = {
-                'Authorization': 'Bearer {}'.format(self.token['access_token'])
+                'Authorization': 'Bearer {}'.format(self.config.get('token.access_token'))
             }
             headers.update(auth_header)
 
@@ -161,34 +143,55 @@ class GooglePhotos():
         elif method == 'HEAD':
             res = requests.head(url, headers=headers)
 
+        # Permission error
         if res.status_code == 401:
-            # Token expired
-            if not retry:
-                self.token = self.request_token()
+            # Maybe the token is expired
+            if not is_retry:
+                # Refresh token
+                self.config.set('token', self.request_token())
+
+                # Re-try request
                 return self.execute_request(url, headers, params, method, True)
-            else:
-                raise Exception("Failed to refresh token")
+
+            # This is already a retry, don't try again
+            raise Exception('Failed to refresh token')
 
         body = res.json() if method != 'HEAD' else None
 
-        return {'status': res.status_code, 'headers': res.headers, 'body': body}
+        return {
+            'status': res.status_code,
+            'headers': res.headers,
+            'body': body
+        }
 
     def check_if_excluded(self, name):
-        for e in self.excluded:
-            if re.match(e, name):
+        """
+        Check if album is to be excluded.
+
+        @param string name
+        @return string
+        """
+        for pattern in self.config.get('exclude'):
+            if re.match(pattern, name):
                 return True
 
         return False
 
-    def get_albums(self, pageToken=""):
+    def get_albums(self, page_token=''):
+        """
+        Get all albums.
+
+        @param string page_token (optional)
+        @return dict
+        """
         params = {
-            "pageSize": "50",
+            'pageSize': '50',
         }
 
-        if pageToken:
-            params['pageToken'] = pageToken
+        if page_token:
+            params['pageToken'] = page_token
 
-        res = self.execute_request(self.API_URL + "/albums", {}, params)
+        res = self.execute_request(self.API_URL + '/albums', {}, params)
 
         albums = res['body']['albums']
 
@@ -197,16 +200,23 @@ class GooglePhotos():
 
         return albums
 
-    def get_album_content(self, album_id, name, pageToken=""):
+    def get_album_content(self, album_id, name, page_token=''):
+        """
+        Get all items of an album and initializes download.
+
+        @param string album_id
+        @param string name
+        @param string page_token (optional)
+        """
         params = {
-            "pageSize": "100",
-            "albumId": album_id
+            'pageSize': '100',
+            'albumId': album_id
         }
 
-        if pageToken:
-            params['pageToken'] = pageToken
+        if page_token:
+            params['pageToken'] = page_token
 
-        res = self.execute_request(self.API_URL + "/mediaItems:search", {}, params, "POST")
+        res = self.execute_request(self.API_URL + '/mediaItems:search', {}, params, 'POST')
 
         if 'mediaItems' in res['body']:
             items = res['body']['mediaItems']
@@ -216,9 +226,9 @@ class GooglePhotos():
             year = result.group(1) if result else '0000'
 
             for item in items:
-                path = self.backup_path + "/" + year + "/" + name
+                path = self.backup_path + '/' + year + '/' + name
                 filename = self.cache.get(item['id'])
-                url_postfix = "=dv" if 'video' in item['mediaMetadata'] else "=w" + item['mediaMetadata']['width'] + "-h" + item['mediaMetadata']['height']
+                url_postfix = '=dv' if 'video' in item['mediaMetadata'] else '=w' + item['mediaMetadata']['width'] + '-h' + item['mediaMetadata']['height']
 
                 if 'video' in item['mediaMetadata']:
                     filename = filename if filename else self.get_video_filename(item)
@@ -229,20 +239,34 @@ class GooglePhotos():
             self.get_album_content(album_id, name, res['body']['nextPageToken'])
 
     def get_video_filename(self, item):
-        res = self.execute_request(item['baseUrl'], {}, {}, "HEAD")
+        """
+        Determine filename of a video by issuing a HEAD request.
+
+        @param dict item
+        @return string
+        """
+        res = self.execute_request(item['baseUrl'], {}, {}, 'HEAD')
 
         filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
         filename, _ = os.path.splitext(filename)
 
-        return filename + ".mp4"
+        return filename + '.mp4'
 
-    def download(self, url, item_id, path, filename=""):
+    def download(self, url, item_id, path, filename=''):
+        """
+        Download item.
+
+        @param string url
+        @param string item_id
+        @param string path
+        @param string filename (optional)
+        """
         # Create folder if not exists
         if not os.path.exists(path):
             os.makedirs(path)
 
         headers = {
-            'Authorization': 'Bearer {}'.format(self.token['access_token'])
+            'Authorization': 'Bearer {}'.format(self.config.get('token')['access_token'])
         }
 
         # Check if file already exists
@@ -253,7 +277,7 @@ class GooglePhotos():
             res = self.execute_request(url, {}, {}, 'HEAD')
 
             if res['status'] != 200:
-                self.logger.warn("Could not get file info ({}) -> {}".format(str(res['status']), str(res['headers'])))
+                self.logger.warn('Could not get file info ({}) -> {}'.format(str(res['status']), str(res['headers'])))
                 return
 
             filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
@@ -264,45 +288,52 @@ class GooglePhotos():
 
         # Download file
         http = urllib3.PoolManager()
-        r = http.request('GET', url, headers=headers, preload_content=False)
+        res = http.request('GET', url, headers=headers, preload_content=False)
 
-        if r.status == 200:
-            filename = filename if filename else re.search('"(.*?)"', r.headers['Content-Disposition']).group(1)
+        if res.status == 200:
+            filename = filename if filename else re.search('"(.*?)"',
+                                                    res.headers['Content-Disposition']).group(1)
             self.cache.set(item_id, filename)
-            self.logger.info("Downloading {} -> {}".format(os.path.basename(path), filename))
+            self.logger.info('Downloading {} -> {}'.format(os.path.basename(path), filename))
 
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:
-                    data = r.read(128)
+                    data = res.read(128)
                     if not data:
                         break
                     out.write(data)
 
-            r.release_conn()
+            res.release_conn()
         else:
-            self.logger.error("Error downloading ({}) -> {}".format(str(r.status), str(r.data)))
+            self.logger.error('Error downloading ({}) -> {}'.format(str(res.status), str(res.data)))
 
     def create_album(self, name):
+        """
+        Create album.
+
+        @param string name
+        """
         params = {
-            "album": {"title": name}
+            'album': {'title': name}
         }
-        self.execute_request(self.API_URL + "/albums", {}, json.dumps(params), "POST")
 
-    def request_token(self, code=""):
-        if not self.credentials:
-            raise Exception('Could not read credentials')
+        self.execute_request(self.API_URL + '/albums', {}, json.dumps(params), 'POST')
 
-        if not code and not self.token:
-            raise Exception('Could not read token')
+    def request_token(self, code=''):
+        """
+        Request auth token.
 
+        @param string code
+        @return dict
+        """
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded'
         }
 
         params = {
-            'client_id' 	: self.credentials['client_id'],
-            'client_secret'	: self.credentials['client_secret'],
-            'redirect_uri'	: self.credentials['redirect_uris'][0],
+            'client_id': self.config.get('credentials')['client_id'],
+            'client_secret': self.config.get('credentials')['client_secret'],
+            'redirect_uri': self.config.get('credentials')['redirect_uris'][0],
         }
 
         if code:
@@ -310,15 +341,15 @@ class GooglePhotos():
             params['code'] = code
         else:
             params['grant_type'] = 'refresh_token'
-            params['refresh_token'] = self.token['refresh_token']
+            params['refresh_token'] = self.config.get('token')['refresh_token']
 
-        res = self.execute_request(self.credentials['token_uri'], headers, params, "POST")
+        res = self.execute_request(self.config.get('credentials')['token_uri'], headers, params, 'POST')
 
         if res['status'] == 200:
-            if self.token:
-                res['body']['refresh_token'] = self.token['refresh_token']
+            if self.config.get('token'):
+                res['body']['refresh_token'] = self.config.get('token')['refresh_token']
 
-            config.set(self.alias, 'token', res['body'])
+            self.config.set('token', res['body'])
             return res['body']
-        else:
-            raise Exception("Error getting token: " + str(res['body']))
+
+        raise Exception('Error getting token: ' + str(res['body']))

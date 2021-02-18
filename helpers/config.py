@@ -1,79 +1,160 @@
+"""Config helper."""
+
 import os
 import json
 
 from . import util
 
-# Determine config location
-location = os.path.join(util.get_project_path(), "config", "config.json")
+class ConfigHelper:
+    """Config helper."""
+    def __init__(self, namespace='', write_through=True, location=None):
+        """
+        Constructor
 
-def read():
-	"""
-	Read and return config file
+        @param string namespace (optional)
+        @param boolean write_through (optional)
+        """
+        # Determine config location
+        self.location = location or os.path.join(util.get_project_path(), 'config', 'config.json')
 
-	@return string
-	"""
-	# Make sure config exists
-	create()
+        # Set namespace
+        self.namespace = namespace
 
-	with open(location, 'r') as f:
-		return json.load(f)
+        # Set write mode
+        self.write_through = write_through
 
-def create():
-	"""
-	Create config
-	"""
-	if not os.path.exists(location):
-		with open(location, 'w') as f:
-			f.write(json.dumps({'general': {}}, indent=4))
+        # Read config to variable
+        self.config = self.read()
 
-def exists(alias, key=None):
-	"""
-	Check if key exists in entry
+    def set_write_through(self, status):
+        """
+        Update write through status.
 
-	@param string alias
-	@param string key (optional)
-	@return boolean
-	"""
-	return alias in config and (key == None or key in config[alias])
+        @param boolean status
+        """
+        self.write_through = status
 
-def get(alias, key=None, default=""):
-	"""
-	Get entire entry or specific value for key
+    def read(self):
+        """
+        Read and return config file.
 
-	@param string alias
-	@param string key (optional)
-	@param string default (optional)
-	@return string
-	"""
-	if alias in config:
-		if key:
-			if key in config[alias] and config[alias][key] != "":
-				return config[alias][key]
-		else:
-			return config[alias]
+        @return dict
+        """
+        if os.path.exists(self.location):
+            # Load config
+            with open(self.location, 'r') as fin:
+                return json.load(fin)
+        else:
+            # Return empty config
+            return {}
 
-	return default
+    def exists(self, path=''):
+        """
+        Check if key exists in entry.
 
-def set(alias, key, value):
-	"""
-	Add value to entry
+        @param string key (optional)
+        @return boolean
+        """
+        obj = self.get(path)
 
-	@param string alias
-	@param string key
-	@param string value
-	"""
-	if not alias in config:
-		config[alias] = {}
+        return obj is not None
 
-	config[alias][key] = value
-	write()
+    def get(self, path='', default=None):
+        """
+        Get config object at path.
 
-def write():
-	"""
-	Write config to file
-	"""
-	with open(location, 'w') as f:
-		f.write(json.dumps(config, indent=4))
+        @param string path (optional)
+        @param string default (optional)
+        @return any
+        """
+        obj = self.config
 
-# Read config to variable
-config = read()
+        # Get path as list
+        path_list = self.__get_absolute_path(path)
+
+        # Get first list element
+        elem = path_list.pop(0) if len(path_list) > 0 else None
+
+        while elem:
+            try:
+                elem = int(elem) if elem.isnumeric() else elem
+                obj = obj[elem]
+                elem = path_list.pop(0) if len(path_list) > 0 else None
+            except Exception:
+                return default
+
+        return obj
+
+    def __get_absolute_path(self, path):
+        """
+        Return absolute path including any namespace.
+
+        @param string path
+        @return list
+        """
+        # Determine absolute path
+        abs_path = '.'.join((self.namespace, path)).lstrip('.')
+
+        # Convert to list
+        path_list = abs_path.split('.')
+
+        # Remove empty elements
+        return list(filter(None, path_list))
+
+    def __create_path(self, path):
+        """
+        Create path in config.
+
+        @param string path
+        """
+        # Get absolute path
+        path_list = self.__get_absolute_path(path)
+
+        config = self.config
+
+        for part in path_list:
+            if part not in config:
+                config[part] = {}
+                config = config[part]
+
+    def set(self, path, value):
+        """
+        Add value to config at path.
+
+        @param string path
+        @param string value
+        """
+        path_list = path.split('.')
+        last = path_list.pop()
+
+        self.__create_path('.'.join(path_list))
+
+        obj = self.get('.'.join(path_list))
+
+        if obj is not None:
+            obj[last] = value
+
+            if self.write_through:
+                self.write()
+
+    def write(self):
+        """
+        Write config to file.
+        """
+        with open(self.location, 'w') as fout:
+            fout.write(json.dumps(self.config, indent=4))
+
+    def delete(self, path):
+        """
+        Delete entry from config.
+
+        @param string path
+        """
+        path_list = path.split('.')
+        last = path_list.pop()
+
+        obj = self.get('.'.join(path_list))
+
+        if obj is not None:
+            del obj[last]
+            self.write()

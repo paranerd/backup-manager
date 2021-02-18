@@ -1,153 +1,44 @@
-import os
-import re
-import datetime
+"""Backup strategy for WordPress."""
+
+from helpers.config import ConfigHelper
+from helpers.strategy import Strategy
 
 from .mysql import MySQL
 from .server import Server
 
-from helpers import util
-from helpers import config
-from helpers.log import Logger
-
-class Wordpress:
-    NAME = "WordPress"
-    TYPE = "wordpress"
+class Wordpress(Strategy):
+    """Backup strategy for WordPress."""
+    NAME = 'WordPress'
+    TYPE = 'wordpress'
 
     def __init__(self):
-        self.timestamp = self.get_timestring()
-        self.logger = Logger()
+        super().__init__()
+        self.server = Server().set_logger(self.logger)
+        self.mysql = MySQL().set_logger(self.logger)
 
-    def add(self):
-        # Read alias
-        alias = input('Alias: ')
-
-        # Check if alias exists
-        while config.exists(alias):
-            print("This alias already exists")
-            alias = input('Alias: ')
-
-        webroot = input("Webroot: ")
-        backup_path = input('Backup path (optional): ') or 'backups/' + alias
-        versions = input("Keep versions [1]: ") or 1
-        ssh_user = input("SSH user: ")
-        ssh_host = input("SSH host: ")
-        ssh_pass = input("SSH pass: ")
-        db_name = input("Database name: ")
-        db_user = input("Database user: ")
-        db_host = input("Database host [{}]: ".format(ssh_host)) or ssh_host
-        db_port = input("Database port [3306]: ") or 3306
-        db_pass = input("Database password: ")
-        zip_on_server = input("Zip on server? [y/N]: ")
-        zip_on_server = zip_on_server != None and zip_on_server.lower() == 'y'
-
-        config.set(alias, 'type', self.TYPE)
-        config.set(alias, 'webroot', webroot)
-        config.set(alias, 'backup_path', backup_path)
-        config.set(alias, 'versions', int(versions))
-        config.set(alias, 'ssh_user', ssh_user)
-        config.set(alias, 'ssh_host', ssh_host)
-        config.set(alias, 'ssh_pass', ssh_pass)
-        config.set(alias, 'db_name', db_name)
-        config.set(alias, 'db_user', db_user)
-        config.set(alias, 'db_host', db_host)
-        config.set(alias, 'db_port', db_port)
-        config.set(alias, 'db_pass', db_pass)
-        config.set(zip_on_server, 'zip_on_server', zip_on_server)
-
-        print("Added.")
-
-    def get_timestring(self):
+    def add(self, override={}):
         """
-        Get current timestamp as string
+        Add WordPress strategy.
 
-        @return string
+        @param dict override (optional)
         """
-        return datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
+        alias = self.server.add({'archive': True, 'type': self.TYPE})
 
-    def escape_string(self, string):
+        server_config = ConfigHelper(alias)
+
+        override = {
+            'alias': alias,
+            'versions': server_config.get('versions')
+        }
+
+        self.mysql.add(override)
+
+    def start_backup(self):
         """
-        Escape string to be used in bash
-
-        @param string string
-        @return string
+        Start backup.
         """
-        return re.escape(string)
+        # Backup database
+        self.mysql.backup(self.alias, True)
 
-    def backup(self, alias):
-        """
-        Main worker
-
-        @param string alias
-        """
-        self.logger.set_source(alias)
-        self.logger.info("Starting...")
-
-        if not config.exists(alias):
-            self.logger.error("Alias {} does not exist".format(alias))
-            return
-
-        # Read config
-        webroot = config.get(alias, 'webroot')
-        backup_path = config.get(alias, 'backup_path')
-        versions = config.get(alias, 'versions')
-        ssh_user = config.get(alias, 'ssh_user')
-        ssh_host = config.get(alias, 'ssh_host')
-        ssh_pass = config.get(alias, 'ssh_pass')
-        db_name = config.get(alias, 'db_name')
-        db_user = config.get(alias, 'db_user')
-        db_host = config.get(alias, 'db_host')
-        db_port = config.get(alias, 'db_port')
-        db_pass = config.get(alias, 'db_pass')
-        zip_on_server = config.get(alias, 'zip_on_server')
-
-        try:
-            # Make sure backup path exists
-            util.create_backup_path(backup_path, alias)
-
-            # Check if we have all necessary information
-            if not webroot or not backup_path or not ssh_user or not ssh_host \
-                or not ssh_pass or not db_name or not db_user or not db_host \
-                or not db_pass or not db_port:
-                raise Exception("Config corrupted")
-
-            # Determine version name
-            version_name = self.get_timestring()
-
-            # Create backup folder
-            path_to = util.create_folder(os.path.join(backup_path, alias + "_" + version_name))
-
-            # Backup database
-            db = MySQL()
-            db.download(db_name, db_host, db_user, db_pass, path_to, version_name, db_port)
-
-            # Backup files
-            server = Server()
-            server.archive(ssh_host, ssh_user, ssh_pass, webroot, path_to, version_name, [], zip_on_server)
-
-            # Remove old versions
-            util.cleanup_versions(backup_path, versions, alias)
-
-            # Add list of backed up files to log
-            self.log_filelist(backup_path, alias)
-
-            # Done
-            self.logger.info("Done")
-        except KeyboardInterrupt:
-            self.logger.warn("Interrupted")
-        except Exception as e:
-            self.logger.error(e)
-        finally:
-            return {
-                'errors': self.logger.count_errors(),
-                'warnings': self.logger.count_warnings()
-            }
-
-    def log_filelist(self, backup_path, alias):
-        """
-        Add files in backup to log
-
-        @param string backup_path
-        """
-        for file in os.listdir(backup_path):
-            if file.startswith(alias):
-                self.logger.info(file)
+        # Backup files
+        self.server.backup(self.alias, True)

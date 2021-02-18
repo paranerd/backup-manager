@@ -1,3 +1,5 @@
+"""Logging helper."""
+
 import os
 import datetime
 from . import util
@@ -13,11 +15,12 @@ name = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
 path = os.path.join(project_path, "log", name) + ".log"
 
 class Logger():
+    """Logging helper."""
     def __init__(self, source=""):
         """
         Constructor
 
-        @param string source
+        @param string source (optional)
         """
         # Set source
         self.source = source
@@ -38,7 +41,7 @@ class Logger():
     @staticmethod
     def get_path():
         """
-        Gets current log path
+        Get current log path.
 
         @return string
         """
@@ -46,15 +49,15 @@ class Logger():
 
     def set_source(self, source):
         """
-        Sets log source
+        Set log source.
 
         @param string source
         """
         self.source = source
 
-    def addToBuffer(self, msg):
+    def add_to_buffer(self, msg):
         """
-        Buffer log message without immediate writing
+        Buffer log message without immediate writing.
 
         @param string msg Log message
         """
@@ -62,34 +65,34 @@ class Logger():
 
     def debug(self, msg=""):
         """
-        Adds debug message
+        Add debug message.
 
-        @param string msg
+        @param string msg (optional)
         """
         self.counts['DEBUG'] += 1
         self._write(msg, 'DEBUG')
 
     def info(self, msg=""):
         """
-        Adds info message
+        Add info message.
 
-        @param string msg
+        @param string msg (optional)
         """
         self.counts['INFO'] += 1
         self._write(msg, 'INFO')
 
     def warn(self, msg=""):
         """
-        Adds warn message
+        Add warn message.
 
-        @param string msg
+        @param string msg (optional)
         """
         self.counts['WARN'] += 1
         self._write(msg, 'WARN')
 
     def error(self, msg=""):
         """
-        Adds error message
+        Add error message.
 
         @param string msg
         """
@@ -98,7 +101,7 @@ class Logger():
 
     def _write(self, msg, level):
         """
-        Writes message to log and print to console
+        Write message to log and print to console.
 
         @param string msg Log message
         @param string level Log level
@@ -121,7 +124,7 @@ class Logger():
 
     def get(self):
         """
-        Get current log
+        Get current log.
 
         @return string
         """
@@ -130,7 +133,7 @@ class Logger():
 
     def count_warnings(self):
         """
-        Get number of warnings
+        Get number of warnings.
 
         @return int
         """
@@ -138,7 +141,7 @@ class Logger():
 
     def count_errors(self):
         """
-        Get number of errors
+        Get number of errors.
 
         @return int
         """

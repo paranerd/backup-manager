@@ -1,0 +1,13 @@
+[
+    {
+        "key": "exclude",
+        "prompt": "Exclude",
+        "type": "list"
+    },
+    {
+        "key": "credentials"
+    },
+    {
+        "key": "token"
+    }
+]

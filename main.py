@@ -1,10 +1,12 @@
+"""Entry point for backup."""
+
 import os
 import sys
 import argparse
 import shutil
 
 from strategies.github import Github
-from strategies.github_gist import GithubGist
+from strategies.gist import Gist
 from strategies.googledrive import GoogleDrive
 from strategies.googlephotos import GooglePhotos
 from strategies.wordpress import Wordpress
@@ -17,11 +19,11 @@ from strategies.postgresql import PostgreSQL
 from helpers import util
 from helpers import mail
 from helpers.log import Logger
-from helpers import config
+from helpers.config import ConfigHelper
 
-modules = [
+strategies = [
     Github,
-    GithubGist,
+    Gist,
     GooglePhotos,
     GoogleDrive,
     Wordpress,
@@ -32,55 +34,60 @@ modules = [
     PostgreSQL
 ]
 
-def type_to_module(type):
-    """
-    Get backup module by type
+config = ConfigHelper('')
 
+def type_to_strategy(strategy_type):
+    """
+    Get backup module by type.
+
+    @param string type
     @return misc
     """
-    for module in modules:
-        if module.TYPE == type:
-            return module
+    for strategy in strategies:
+        if strategy.TYPE == strategy_type:
+            return strategy
+
+    return None
 
 def parse_args():
     """
-    Parse command line arguments
+    Parse command line arguments.
 
     @return dict
     """
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument('--add', action='store_true')
     parser.add_argument('--backup', action='store_true')
-    args, leftovers = parser.parse_known_args()
+    arguments, _ = parser.parse_known_args()
 
-    return args
+    return arguments
 
 def configure_mail():
     """
-    Add main credentials to config
+    Add mail credentials to config.
     """
     mail_user = input('Mail username [None]: ')
 
     if mail_user:
         mail_pass = input('Mail password: ')
     else:
-        mail_pass = ""
+        mail_pass = ''
 
-    config.set('general', 'mail_user', mail_user)
-    config.set('general', 'mail_pass', mail_pass)
+    config.set('general.mail_user', mail_user)
+    config.set('general.mail_pass', mail_pass)
 
 def format_mail_body(warnings, errors):
     """
-    Format mail body
+    Format mail body.
 
     @param int warnings
     @param int errors
 
     @return string
     """
-    body = "<h1>Backup complete</h1>"
-    body += "<p>{} Warning(s)</p>".format(warnings)
-    body += "<p>{} Error(s)</p>".format(errors)
+    body = '<h1>Backup complete</h1>'
+    body += '<p>{} Warning(s)</p>'.format(warnings)
+    body += '<p>{} Error(s)</p>'.format(errors)
 
     return body
 
@@ -90,17 +97,23 @@ def show_add_menu():
     """
     print('--- Select type: ---')
 
-    for index, entry in enumerate(modules):
-        print("[{}] {}".format(index + 1, entry.NAME))
+    for index, entry in enumerate(strategies):
+        print('[{}] {}'.format(index + 1, entry.NAME))
 
     print()
-    type = int(input("Type: "))
+    backup_type = None
+
+    while not backup_type or not backup_type.isnumeric() or\
+        not 0 < int(backup_type) <= len(strategies):
+        backup_type = input('Type: ')
+
+    backup_type = int(backup_type)
 
     try:
-        module = modules[type - 1]()
-        module.add()
-    except Exception as e:
-        print(e)
+        strategy = strategies[backup_type - 1]()
+        strategy.add()
+    except Exception as err:
+        print(err)
 
 def show_help():
     """
@@ -113,18 +126,18 @@ def show_help():
     print('\t--add: Add a new account to backup')
     print('\t--backup: Start the backup (optionally followed by aliases to be backed up exclusively)')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = parse_args()
 
     # Initialize Logger
-    logger = Logger()
+    logger = Logger('main')
 
     # Count warnings and errors
     warnings = 0
     errors = 0
 
     # Configure mail if necessary
-    if not config.exists('general', 'mail_user'):
+    if not config.exists('general.mail_user'):
         configure_mail()
 
     # If add
@@ -137,9 +150,11 @@ if __name__ == "__main__":
             entry = config.get(alias)
 
             if not entry:
-                logger.error("Alias '{}' does not exist".format(alias))
-            elif alias != "general":
-                module = type_to_module(entry['type'])()
+                logger.error('Entry "{}" not found'.format(alias))
+                sys.exit(1)
+
+            if alias != 'general':
+                module = type_to_strategy(entry['type'])()
                 res = module.backup(alias)
 
                 warnings += int(res['warnings'])
@@ -155,6 +170,6 @@ if __name__ == "__main__":
         shutil.rmtree(tmp_path)
 
     # Mail log
-    if config.get('general', 'mail_user') and config.get('general', 'mail_pass') and os.path.exists(Logger.get_path()):
+    if config.get('general.mail_user') and config.get('general.mail_pass') and os.path.exists(Logger.get_path()):
         mail_body = format_mail_body(warnings, errors)
-        mail.send_gmail(config.get('general', 'mail_user'), config.get('general', 'mail_pass'), [config.get('general', 'mail_user')], "Backup My Accounts", mail_body, [Logger.get_path()])
+        mail.send_gmail(config.get('general.mail_user'), config.get('general.mail_pass'), [config.get('general.mail_user')], 'Backup My Accounts', mail_body, [Logger.get_path()])

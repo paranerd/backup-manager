@@ -1,0 +1,39 @@
+[
+    {
+        "key": "path",
+        "prompt": "Path on server"
+    },
+    {
+        "key": "ssh_user",
+        "prompt": "SSH user"
+    },
+    {
+        "key": "ssh_host",
+        "prompt": "SSH host"
+    },
+    {
+        "key": "ssh_pass",
+        "prompt": "SSH pass"
+    },
+    {
+        "key": "versions",
+        "prompt": "Keep versions",
+        "type": "int",
+        "default": 1
+    },
+    {
+        "key": "archive",
+        "prompt": "Archive?",
+        "type": "bool"
+    },
+    {
+        "key": "zip_on_server",
+        "prompt": "Zip on server?",
+        "type": "bool"
+    },
+    {
+        "key": "exclude",
+        "prompt": "Exclude",
+        "type": "list"
+    }
+]

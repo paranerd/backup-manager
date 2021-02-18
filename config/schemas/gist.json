@@ -1,0 +1,15 @@
+[
+    {
+        "key": "username",
+        "prompt": "GitHub username"
+    },
+    {
+        "key": "token",
+        "prompt": "GitHub token"
+    },
+    {
+        "key": "archive",
+        "prompt": "Archive?",
+        "type": "bool"
+    }
+]

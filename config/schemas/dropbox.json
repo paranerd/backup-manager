@@ -1,0 +1,11 @@
+[
+    {
+        "key": "token",
+        "prompt": "Access token"
+    },
+    {
+        "key": "exclude",
+        "prompt": "Exclude",
+        "type": "list"
+    }
+]
