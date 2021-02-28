@@ -27,8 +27,8 @@
         "type": "bool"
     },
     {
-        "key": "zip_on_server",
-        "prompt": "Zip on server?",
+        "key": "remote_zip",
+        "prompt": "Zip on remote?",
         "type": "bool"
     },
     {
