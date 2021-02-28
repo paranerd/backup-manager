@@ -28,7 +28,8 @@ class Wordpress(Strategy):
 
         override = {
             'alias': alias,
-            'versions': server_config.get('versions')
+            'versions': server_config.get('versions'),
+            'exclude': []
         }
 
         self.mysql.add(override)
