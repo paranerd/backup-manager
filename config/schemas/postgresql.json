@@ -22,7 +22,7 @@
         "prompt": "Database pass"
     },
     {
-        "key": "vesions",
+        "key": "versions",
         "prompt": "Keep versions",
         "type": "int",
         "default": 1
