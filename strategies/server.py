@@ -18,7 +18,7 @@ class Server(Strategy):
         Start backup.
         """
         if self.config.get('archive'):
-            self.archive(self.config.get('ssh_host'), self.config.get('ssh_user'), self.config.get('ssh_pass'), self.config.get('path'), self.backup_path, self.config.get('exclude'), self.config.get('zip_on_server'))
+            self.archive(self.config.get('ssh_host'), self.config.get('ssh_user'), self.config.get('ssh_pass'), self.config.get('path'), self.backup_path, self.config.get('exclude'), self.config.get('remote_zip'))
         else:
             self.sync(self.config.get('ssh_host'), self.config.get('ssh_user'), self.config.get('ssh_pass'), self.config.get('path'), self.config.get('exclude'))
 
@@ -37,10 +37,10 @@ class Server(Strategy):
         exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
 
         # Sync using rsync
-        cmd = "sshpass -p {} rsync -a {} -e 'ssh -o StrictHostKeyChecking=no' {}@{}:{} {}/".format(password, exclude_str, user, host, path_from, self.backup_path)
+        cmd = "sshpass -p {} rsync -a {} -e 'ssh -o StrictHostKeyChecking=no' {}@{}:{}/ {}/".format(password, exclude_str, user, host, path_from, self.backup_path)
         subprocess.run([cmd], shell=True)
 
-    def archive(self, host, user, password, path_from, path_to, exclude=[], zip_on_server=False):
+    def archive(self, host, user, password, path_from, path_to, exclude=[], remote_zip=False):
         """
         Download files to tmp using rsync and creates a zip archive from it.
 
@@ -53,15 +53,20 @@ class Server(Strategy):
         """
         # Escape password
         password = re.escape(password)
-        exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
 
         # Determine filename
         filename = self.alias + '_' + util.startup_time
 
-        if zip_on_server:
+        if remote_zip:
             try:
+                # Determine remote basename
+                basename = os.path.basename(path_from)
+
+                # Build exclude string
+                exclude_str = ' '.join(['-x \'' + os.path.join(basename, x) + '*\'' if x.endswith('/') else '-x \'' + os.path.join(basename, x) + '\'' for x in exclude])
+
                 # Create zip on remote server
-                cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"cd {}/.. && zip -r {}/{}.zip `basename {}` {}\"".format(password, user, host, path_from, path_from, filename, path_from, exclude_str)
+                cmd = "sshpass -p {} ssh {}@{} -o StrictHostKeyChecking=no \"cd {}/.. && zip -r {}/{}.zip {} {}\"".format(password, user, host, path_from, path_from, filename, basename, exclude_str)
                 subprocess.run([cmd], shell=True, check=True, capture_output=True)
             except subprocess.CalledProcessError as err:
                 self.logger.error('Error zipping: {} STDOUT: {})'.format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
@@ -73,12 +78,15 @@ class Server(Strategy):
             except subprocess.CalledProcessError as err:
                 self.logger.error('Error pulling backups: {} STDOUT: {})'.format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
         else:
-            # Create temporary folder
-            tmp_path = util.create_tmp_folder()
-
             try:
-                cmd = 'sshpass -p {} rsync -a {} -e ssh {}@{}:{}/ {}'.format(password, exclude_str, user, host, path_from, tmp_path)
-                print(cmd)
+                # Create temporary folder
+                tmp_path = util.create_tmp_folder()
+
+                # Build exclude string
+                exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
+
+                # Sync remote to tmp
+                cmd = 'sshpass -p {} rsync -a {} -e ssh {}@{}:{}/ {}/homeassistant'.format(password, exclude_str, user, host, path_from, tmp_path)
                 subprocess.run([cmd], shell=True, check=True, capture_output=True)
             except subprocess.CalledProcessError as err:
                 self.logger.error('Error pulling backups: {} STDOUT: {})'.format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
