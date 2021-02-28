@@ -151,10 +151,17 @@ if __name__ == '__main__':
 
             if not entry:
                 logger.error('Entry "{}" not found'.format(alias))
-                sys.exit(1)
+                continue
 
             if alias != 'general':
-                module = type_to_strategy(entry['type'])()
+                strategy = type_to_strategy(entry['type'])
+
+                if not strategy:
+                    logger.error('Type "{}" not found'.format(entry['type']))
+                    continue
+
+                module = strategy()
+
                 res = module.backup(alias)
 
                 warnings += int(res['warnings'])
