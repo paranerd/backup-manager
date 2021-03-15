@@ -36,6 +36,7 @@ strategies = [
 
 config = ConfigHelper('')
 
+
 def type_to_strategy(strategy_type):
     """
     Get backup module by type.
@@ -49,6 +50,7 @@ def type_to_strategy(strategy_type):
 
     return None
 
+
 def parse_args():
     """
     Parse command line arguments.
@@ -61,6 +63,7 @@ def parse_args():
     arguments, _ = parser.parse_known_args()
 
     return arguments
+
 
 def configure_mail():
     """
@@ -76,6 +79,7 @@ def configure_mail():
     config.set('general.mail_user', mail_user)
     config.set('general.mail_pass', mail_pass)
 
+
 def format_mail_body(warnings, errors):
     """
     Format mail body.
@@ -85,11 +89,13 @@ def format_mail_body(warnings, errors):
 
     @return string
     """
-    body = '<h1>Backup complete</h1>'
-    body += '<p>{} Warning(s)</p>'.format(warnings)
-    body += '<p>{} Error(s)</p>'.format(errors)
+    with open('templates/base.html', 'r') as fin:
+        html = fin.read()
+        html = html.replace('{{ warnings }}', str(warnings))
+        html = html.replace('{{ errors }}', str(errors))
 
-    return body
+        return html
+
 
 def show_add_menu():
     """
@@ -104,7 +110,7 @@ def show_add_menu():
     backup_type = None
 
     while not backup_type or not backup_type.isnumeric() or\
-        not 0 < int(backup_type) <= len(strategies):
+            not 0 < int(backup_type) <= len(strategies):
         backup_type = input('Type: ')
 
     backup_type = int(backup_type)
@@ -114,6 +120,7 @@ def show_add_menu():
         strategy.add()
     except Exception as err:
         print(err)
+
 
 def show_help():
     """
@@ -125,6 +132,7 @@ def show_help():
     print('Arguments:')
     print('\t--add: Add a new account to backup')
     print('\t--backup: Start the backup (optionally followed by aliases to be backed up exclusively)')
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -144,7 +152,8 @@ if __name__ == '__main__':
     if args.add:
         show_add_menu()
     elif args.backup:
-        aliases = sys.argv[2:] if len(sys.argv) > 2 else list(config.config.keys())
+        aliases = sys.argv[2:] if len(
+            sys.argv) > 2 else list(config.config.keys())
 
         for alias in aliases:
             entry = config.get(alias)
@@ -179,4 +188,5 @@ if __name__ == '__main__':
     # Mail log
     if config.get('general.mail_user') and config.get('general.mail_pass') and os.path.exists(Logger.get_path()):
         mail_body = format_mail_body(warnings, errors)
-        mail.send_gmail(config.get('general.mail_user'), config.get('general.mail_pass'), [config.get('general.mail_user')], 'Backup My Accounts', mail_body, [Logger.get_path()])
+        mail.send_gmail(config.get('general.mail_user'), config.get('general.mail_pass'),
+                        [config.get('general.mail_user')], 'Backup My Accounts', mail_body, [Logger.get_path()])
