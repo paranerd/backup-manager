@@ -1,5 +1,7 @@
 """Backup strategy for Google Drive."""
 
+from helpers.strategy import Strategy
+from helpers.cache import Cache
 import os
 from datetime import datetime
 import re
@@ -15,13 +17,13 @@ import traceback
 from urllib3.contrib import pyopenssl
 pyopenssl.extract_from_urllib3()
 
-from helpers.strategy import Strategy
 
 class GoogleDrive(Strategy):
     """Backup strategy for Google Drive."""
     NAME = 'Google Drive'
     TYPE = 'googledrive'
     API_URL = 'https://www.googleapis.com/drive/v3/files'
+    cache = None
 
     def add(self, override={}):
         """
@@ -36,7 +38,8 @@ class GoogleDrive(Strategy):
 
         # Parse credentials
         credentials_str = input('Paste content of credentials file: ')
-        self.config.set('credentials', json.loads(credentials_str)['installed'])
+        self.config.set('credentials', json.loads(
+            credentials_str)['installed'])
 
         # Get access code
         code = self.request_code()
@@ -48,6 +51,9 @@ class GoogleDrive(Strategy):
         """
         Start backup.
         """
+        # Set cache
+        self.cache = Cache(self.alias)
+
         self.get_children()
 
     def build_auth_uri(self):
@@ -58,8 +64,10 @@ class GoogleDrive(Strategy):
         """
         auth_uri = self.config.get('credentials.auth_uri')
         auth_uri += '?response_type=code'
-        auth_uri += '&redirect_uri=' + quote_plus(self.config.get('credentials.redirect_uris.0'))
-        auth_uri += '&client_id=' + quote_plus(self.config.get('credentials.client_id'))
+        auth_uri += '&redirect_uri=' + \
+            quote_plus(self.config.get('credentials.redirect_uris.0'))
+        auth_uri += '&client_id=' + \
+            quote_plus(self.config.get('credentials.client_id'))
         auth_uri += '&scope=https://www.googleapis.com/auth/drive.readonly'
         auth_uri += '&access_type=offline'
         auth_uri += '&approval_prompt=auto'
@@ -152,11 +160,13 @@ class GoogleDrive(Strategy):
             params['grant_type'] = 'refresh_token'
             params['refresh_token'] = self.config.get('token')['refresh_token']
 
-        res = self.execute_request(self.config.get('credentials')['token_uri'], headers, params, 'POST')
+        res = self.execute_request(self.config.get('credentials')[
+                                   'token_uri'], headers, params, 'POST')
 
         if res['status'] == 200:
             if self.config.get('token'):
-                res['body']['refresh_token'] = self.config.get('token')['refresh_token']
+                res['body']['refresh_token'] = self.config.get('token')[
+                    'refresh_token']
 
             self.config.set('token', res['body'])
             return res['body']
@@ -183,7 +193,8 @@ class GoogleDrive(Strategy):
         print('11. Click "Save and continue"')
         print('12. Enter yourself as a test user')
         print('13. Click "Save and continue"')
-        print('14. [Open credentials page](https://console.developers.google.com/apis/credentials)')
+        print(
+            '14. [Open credentials page](https://console.developers.google.com/apis/credentials)')
         print('15. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application')
         print('16. Download the Client ID JSON')
         print()
@@ -250,7 +261,7 @@ class GoogleDrive(Strategy):
 
         params = {
             'q': "'" + item_id + "' in parents",
-            'fields': 'nextPageToken,files(id,name,md5Checksum,mimeType,modifiedTime,trashed)',
+            'fields': 'nextPageToken,files(id,name,mimeType,modifiedTime,trashed)',
             'pageSize': '100'
         }
 
@@ -276,11 +287,14 @@ class GoogleDrive(Strategy):
             filename = item['name']
 
             # Excluded or trashed
-            if self.check_if_excluded(path_item) or item['trashed']:
-                self.logger.info('Excluding {}'.format(path_item))
+            if self.check_if_excluded(path_item):
+                self.logger.info(
+                    'Skipping {} because it is excluded'.format(path_item))
+                continue
 
-                if item['trashed']:
-                    self.logger.info('... because it is trashed.')
+            if item['trashed']:
+                self.logger.info(
+                    'Skipping {} because it is trashed.'.format(path_item))
                 continue
 
             # Folders
@@ -290,23 +304,65 @@ class GoogleDrive(Strategy):
 
             # Google Docs
             if self.is_google_doc(item):
-                url = self.API_URL + '/' + item['id'] + '/export?mimeType=application/pdf'
+                url = self.API_URL + '/' + \
+                    item['id'] + '/export?mimeType=application/pdf'
                 filename = item['name'] + '_converted.pdf'
             # Google Spreadsheets
             elif self.is_google_sheet(item):
-                url = self.API_URL + '/' + item['id'] + '/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                url = self.API_URL + '/' + \
+                    item['id'] + '/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 filename = item['name'] + '.xlsx'
             # Google Slides
             elif self.is_google_slides(item):
-                url = self.API_URL + '/' + item['id'] + '/export?mimeType=application/pdf'
+                url = self.API_URL + '/' + \
+                    item['id'] + '/export?mimeType=application/pdf'
                 filename = item['name'] + '_converted.pdf'
+
+            if self.check_if_moved_and_move(item, path, filename):
+                continue
 
             # Download
             if not self.is_backed_up(item, path, filename):
-                self.download(url, path, filename)
+                try:
+                    self.download(url, item, path, filename)
+
+                    # Add to cache
+                    cache_item = {'modified': item['modifiedTime'],
+                                  'path': os.path.join(path, filename)}
+                    self.cache.set(item['id'], cache_item)
+                except Exception as e:
+                    self.logger.error(e)
 
         if 'nextPageToken' in res['body']:
             self.get_children(item_id, parents, res['body']['nextPageToken'])
+
+    def check_if_moved_and_move(self, item, path, filename):
+        """
+        Check if source was simply moved and move if so.
+        To determine whether the item has moved check the modified time.
+        We can't use 'md5Checksum' here, because Google Docs don't have one.
+
+        @param GoogleDriveFile item
+        @param string path
+        @param string filename
+        @return boolean
+        """
+        move_source = self.cache.get(item['id'])
+
+        if move_source:
+            move_target = os.path.join(path, filename)
+
+            if move_source['modified'] == item['modifiedTime'] \
+                    and move_source['path'] != move_target:
+                self.logger.info('Moving {} to {}'.format(
+                    move_source['path'], move_target))
+                os.rename(move_source['path'], move_target)
+
+                self.cache.set(item['id'] + '.' + 'path', move_target)
+
+                return True
+
+        return False
 
     def is_backed_up(self, item, path, filename):
         """
@@ -326,15 +382,13 @@ class GoogleDrive(Strategy):
 
         return False
 
-
-    def download(self, url, path, filename=None):
+    def download(self, url, path, filename):
         """
         Download item.
 
         @param string url
         @param string path
-        @param GoogleDriveFile
-        @param string|None filename
+        @param string filename
         """
         # Create folder if not exists
         if not os.path.exists(path):
@@ -345,13 +399,15 @@ class GoogleDrive(Strategy):
         }
 
         # Download file
-        self.logger.info('Downloading {}...'.format(os.path.join(path, filename)))
+        self.logger.info('Downloading {}...'.format(
+            os.path.join(path, filename)))
 
         http = urllib3.PoolManager()
         res = http.request('GET', url, headers=headers, preload_content=False)
 
         if res.status == 200:
             self.logger.info('Downloaded.')
+
             with open(os.path.join(path, filename), 'wb') as out:
                 while True:
                     data = res.read(128)
@@ -361,4 +417,5 @@ class GoogleDrive(Strategy):
 
             res.release_conn()
         else:
-            self.logger.error('Download failed ({}) -> {}'.format(res.status, str(res.data)))
+            raise Exception(
+                'Download failed ({}) -> {}'.format(res.status, str(res.data)))
