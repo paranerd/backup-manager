@@ -141,7 +141,7 @@ class ConfigHelper:
         """
         Write config to file.
         """
-        with open(self.location, 'w') as fout:
+        with open(self.location, 'w+') as fout:
             fout.write(json.dumps(self.config, indent=4))
 
     def delete(self, path):
