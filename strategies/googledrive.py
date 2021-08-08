@@ -324,7 +324,7 @@ class GoogleDrive(Strategy):
             # Download
             if not self.is_backed_up(item, path, filename):
                 try:
-                    self.download(url, item, path, filename)
+                    self.download(url, path, filename)
 
                     # Add to cache
                     cache_item = {'modified': item['modifiedTime'],
