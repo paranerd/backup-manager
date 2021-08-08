@@ -77,15 +77,15 @@ class GooglePhotos(Strategy):
         print('5. Choose "External"')
         print('6. Enter a name, support email and contact email')
         print('7. Click "Save and continue"')
-        print('8. Click "Add or remove scopes")
-        print('9. Select ".../auth/drive.readonly")
-        print('10. Select ".../auth/photoslibrary.readonly")
-        print('11. Click "Save and continue")
-        print('12. Enter yourself as a test user)
-        print('13. Click "Save and continue")
-        print('14. [Open credentials page](https://console.developers.google.com/apis/credentials))
-        print('15. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application)
-        print('16. Download the Client ID JSON)
+        print('8. Click "Add or remove scopes"')
+        print('9. Select ".../auth/drive.readonly"')
+        print('10. Select ".../auth/photoslibrary.readonly"')
+        print('11. Click "Save and continue"')
+        print('12. Enter yourself as a test user')
+        print('13. Click "Save and continue"')
+        print('14. [Open credentials page](https://console.developers.google.com/apis/credentials)')
+        print('15. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application')
+        print('16. Download the Client ID JSON')
         print()
 
     def build_auth_uri(self):
@@ -226,6 +226,7 @@ class GooglePhotos(Strategy):
 
         if 'mediaItems' in res['body']:
             items = res['body']['mediaItems']
+            print(items)
 
             result = re.match('([0-9]{4})-', name)
 
