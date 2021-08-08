@@ -75,11 +75,17 @@ class GooglePhotos(Strategy):
         print('3. Activate Photos API here: https://console.developers.google.com/apis/library/photoslibrary.googleapis.com')
         print('4. Open https://console.developers.google.com/apis/credentials/consent')
         print('5. Choose "External"')
-        print('6. Enter a name and click "Save"')
-        print('7. Open https://console.developers.google.com/apis/credentials')
-        print('8. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application')
-        print('9. Ignore the pop-up')
-        print('10. Download the client ID JSON')
+        print('6. Enter a name, support email and contact email')
+        print('7. Click "Save and continue"')
+        print('8. Click "Add or remove scopes")
+        print('9. Select ".../auth/drive.readonly")
+        print('10. Select ".../auth/photoslibrary.readonly")
+        print('11. Click "Save and continue")
+        print('12. Enter yourself as a test user)
+        print('13. Click "Save and continue")
+        print('14. [Open credentials page](https://console.developers.google.com/apis/credentials))
+        print('15. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application)
+        print('16. Download the Client ID JSON)
         print()
 
     def build_auth_uri(self):
@@ -92,7 +98,7 @@ class GooglePhotos(Strategy):
         auth_uri += '?response_type=code'
         auth_uri += '&redirect_uri=' + quote_plus(self.config.get('credentials.redirect_uris.0'))
         auth_uri += '&client_id=' + quote_plus(self.config.get('credentials.client_id'))
-        auth_uri += '&scope=https://www.googleapis.com/auth/photoslibrary'
+        auth_uri += '&scope=https://www.googleapis.com/auth/photoslibrary.readonly'
         auth_uri += '&access_type=offline'
         auth_uri += '&approval_prompt=auto'
 

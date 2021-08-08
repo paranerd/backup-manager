@@ -49,27 +49,33 @@ Check out [this link](https://support.google.com/accounts/answer/185833) for how
 
 ## Set up Google-Backup
 1. [Open google cloud console](https://console.developers.google.com/)
-2. Choose or create a project
-3. [Activate Drive API](https://console.developers.google.com/apis/library/drive.googleapis.com)
-4. [Activate Photos API](https://console.developers.google.com/apis/library/photoslibrary.googleapis.com)
-5. [Create consent page](https://console.developers.google.com/apis/credentials/consent)
-6. Choose "External"
-7. Enter a name and click "Save"
-8. [Open credentials page](https://console.developers.google.com/apis/credentials)
-9. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application
-10. Ignore the pop-up
-11. Download the client ID JSON
-12. When prompted by the script, paste the content of that json
+1. Choose or create a project
+1. [Activate Drive API](https://console.developers.google.com/apis/library/drive.googleapis.com)
+1. [Activate Photos API](https://console.developers.google.com/apis/library/photoslibrary.googleapis.com)
+1. [Create consent page](https://console.developers.google.com/apis/credentials/consent)
+1. Choose "External"
+1. Enter a name, support email and contact email
+1. Click "Save and continue"
+1. Click "Add or remove scopes"
+1. Select ".../auth/drive.readonly"
+1. Select ".../auth/photoslibrary.readonly"
+1. Click "Save and continue"
+1. Enter yourself as a test user
+1. Click "Save and continue"
+1. [Open credentials page](https://console.developers.google.com/apis/credentials)
+1. Click on "Create Credentials" -> OAuth-Client-ID -> Desktop Application
+1. Download the Client ID JSON
+1. When prompted by the script, paste the content of that json
 
 ## Set up Dropbox-Backup
 1. [Open Dropbox developers page](https://www.dropbox.com/developers/apps)
-2. Click "Create app"
-3. Select "Dropbox API"
-4. Select "Full Dropbox"
-5. Give it a name
-6. Click "Create app"
-7. Under "Generated access token" click "Generate"
-8. When prompted by the script, paste that token
+1. Click "Create app"
+1. Select "Dropbox API"
+1. Select "Full Dropbox"
+1. Give it a name
+1. Click "Create app"
+1. Under "Generated access token" click "Generate"
+1. When prompted by the script, paste that token
 
 ## Set up GitHub-Backup
 Follow [this documentation](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token#creating-a-token) to create your personal access token.
