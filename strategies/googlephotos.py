@@ -12,7 +12,6 @@ import urllib3
 from urllib3.contrib import pyopenssl
 pyopenssl.extract_from_urllib3()
 
-from helpers.cache import Cache
 from helpers.strategy import Strategy
 
 class GooglePhotos(Strategy):
@@ -20,7 +19,6 @@ class GooglePhotos(Strategy):
     NAME = 'Google Photos'
     TYPE = 'googlephotos'
     API_URL = 'https://photoslibrary.googleapis.com/v1'
-    cache = None
 
     def add(self, override={}):
         """
@@ -50,9 +48,6 @@ class GooglePhotos(Strategy):
         Start backup.
         """
         self.logger.info('Getting albums...')
-
-        # Set cache
-        self.cache = Cache(self.alias)
 
         # Get all albums
         albums = self.get_albums()
@@ -226,7 +221,6 @@ class GooglePhotos(Strategy):
 
         if 'mediaItems' in res['body']:
             items = res['body']['mediaItems']
-            print(items)
 
             result = re.match('([0-9]{4})-', name)
 
@@ -234,39 +228,22 @@ class GooglePhotos(Strategy):
 
             for item in items:
                 path = self.backup_path + '/' + year + '/' + name
-                filename = self.cache.get(item['id'])
+                filename = item['filename']
+
                 url_postfix = '=dv' if 'video' in item['mediaMetadata'] else '=w' + item['mediaMetadata']['width'] + '-h' + item['mediaMetadata']['height']
 
-                if 'video' in item['mediaMetadata']:
-                    filename = filename if filename else self.get_video_filename(item)
-
-                self.download(item['baseUrl'] + url_postfix, item['id'], path, filename)
+                self.download(item['baseUrl'] + url_postfix, filename, path)
 
         if 'nextPageToken' in res['body']:
             self.get_album_content(album_id, name, res['body']['nextPageToken'])
 
-    def get_video_filename(self, item):
-        """
-        Determine filename of a video by issuing a HEAD request.
-
-        @param dict item
-        @return string
-        """
-        res = self.execute_request(item['baseUrl'], {}, {}, 'HEAD')
-
-        filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
-        filename, _ = os.path.splitext(filename)
-
-        return filename + '.mp4'
-
-    def download(self, url, item_id, path, filename=''):
+    def download(self, url, filename, path):
         """
         Download item.
 
         @param string url
-        @param string item_id
+        @param string filename
         @param string path
-        @param string filename (optional)
         """
         # Create folder if not exists
         if not os.path.exists(path):
@@ -277,30 +254,14 @@ class GooglePhotos(Strategy):
         }
 
         # Check if file already exists
-        if filename:
-            if os.path.isfile(os.path.join(path, filename)):
-                return
-        else:
-            res = self.execute_request(url, {}, {}, 'HEAD')
-
-            if res['status'] != 200:
-                self.logger.warn('Could not get file info ({}) -> {}'.format(str(res['status']), str(res['headers'])))
-                return
-
-            filename = re.search('"(.*?)"', res['headers']['Content-Disposition']).group(1)
-
-            if os.path.isfile(os.path.join(path, filename)):
-                self.cache.set(item_id, filename)
-                return
+        if os.path.isfile(os.path.join(path, filename)):
+            return
 
         # Download file
         http = urllib3.PoolManager()
         res = http.request('GET', url, headers=headers, preload_content=False)
 
         if res.status == 200:
-            filename = filename if filename else re.search('"(.*?)"',
-                                                    res.headers['Content-Disposition']).group(1)
-            self.cache.set(item_id, filename)
             self.logger.info('Downloading {} -> {}'.format(os.path.basename(path), filename))
 
             with open(os.path.join(path, filename), 'wb') as out:
