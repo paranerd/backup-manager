@@ -1,6 +1,6 @@
 # Backup Manager
 
-A backup-tool for multiple cloud-services
+Backup Manager is an extensible tool to backup data from various cloud providers as well as GitHub, Wordpress, servers and databases.
 
 Currently supported:
 - GitHub
