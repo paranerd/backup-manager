@@ -1,4 +1,4 @@
-# Backup My Accounts
+# Backup Manager
 
 A backup-tool for multiple cloud-services
 
@@ -81,6 +81,26 @@ Check out [this link](https://support.google.com/accounts/answer/185833) for how
 Follow [this documentation](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token#creating-a-token) to create your personal access token.
 
 You will be prompted for it when adding a GitHub backup
+
+## Using with Docker
+Backup Manager also works in a Docker environment.
+
+### Adding accounts
+To add new accounts, run:
+
+```
+docker run -it -v "/path/to/backups:/app/backups" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager-dev add
+```
+
+Then follow the adding process.
+
+You may replace the backup path however you like, just remember to reflect it properly when adding.
+
+### Running the backup
+Analogous to adding, the backup command is as follows:
+```
+docker run -it -v "/path/to/backups:/app/backups" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager-dev backup [alias1, alias2]
+```
 
 ## How it works
 1. GitHub
