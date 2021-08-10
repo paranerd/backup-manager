@@ -128,6 +128,12 @@ def show_help():
 
 
 def init_logger():
+    """Create log folder and load logger config."""
+    # Create log folder
+    if not os.path.exists('log'):
+        print('Creating log folder')
+        os.mkdir('log')
+
     # Load logger config
     with open(os.path.join('config', 'logger.yaml'), 'r') as f:
         logger_config = yaml.safe_load(f.read())
