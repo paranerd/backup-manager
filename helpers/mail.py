@@ -7,9 +7,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 
+
 def send_gmail(send_from, pwd, send_to, subject, text, attachments=None):
     """
-    Send E-Mail using GMail
+    Send E-Mail using GMail.
 
     @param string send_from
     @param string pwd
@@ -28,10 +29,12 @@ def send_gmail(send_from, pwd, send_to, subject, text, attachments=None):
 
     for attachment in attachments or []:
         with open(attachment, 'rb') as fil:
-            part = MIMEApplication(fil.read(), Name=os.path.basename(attachment))
+            part = MIMEApplication(
+                fil.read(), Name=os.path.basename(attachment))
 
         # After the file is closed
-        part['Content-Disposition'] = 'attachment; filename="%s"' % os.path.basename(attachment)
+        part['Content-Disposition'] = 'attachment; filename="%s"' % os.path.basename(
+            attachment)
         msg.attach(part)
 
     try:
