@@ -20,12 +20,8 @@ class GooglePhotos(Strategy):
     TYPE = 'googlephotos'
     API_URL = 'https://photoslibrary.googleapis.com/v1'
 
-    def add(self, override={}):
-        """
-        Add Google Photos account.
-
-        @param dict override (optional)
-        """
+    def add(self):
+        """Add Google Photos account."""
         self.alias = super().add()
 
         if not self.alias:
