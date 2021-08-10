@@ -4,6 +4,9 @@ import os
 import sys
 import argparse
 import shutil
+import logging
+import logging.config
+import yaml
 
 from strategies.github import Github
 from strategies.gist import Gist
@@ -18,7 +21,6 @@ from strategies.postgresql import PostgreSQL
 
 from helpers import util
 from helpers import mail
-from helpers.log import Logger
 from helpers.config import ConfigHelper
 
 strategies = [
@@ -38,8 +40,7 @@ config = ConfigHelper('')
 
 
 def type_to_strategy(strategy_type):
-    """
-    Get backup module by type.
+    """Get backup module by type.
 
     @param string type
     @return misc
@@ -52,8 +53,7 @@ def type_to_strategy(strategy_type):
 
 
 def parse_args():
-    """
-    Parse command line arguments.
+    """Parse command line arguments.
 
     @return dict
     """
@@ -66,9 +66,7 @@ def parse_args():
 
 
 def configure_mail():
-    """
-    Add mail credentials to config.
-    """
+    """Add mail credentials to config."""
     mail_user = input('Mail username [None]: ')
 
     if mail_user:
@@ -81,8 +79,7 @@ def configure_mail():
 
 
 def format_mail_body(warnings, errors):
-    """
-    Format mail body.
+    """Format mail body.
 
     @param int warnings
     @param int errors
@@ -98,9 +95,7 @@ def format_mail_body(warnings, errors):
 
 
 def show_add_menu():
-    """
-    Display menu for adding accounts
-    """
+    """Display menu for adding accounts."""
     print('--- Select type: ---')
 
     for index, entry in enumerate(strategies):
@@ -123,9 +118,7 @@ def show_add_menu():
 
 
 def show_help():
-    """
-    Show help
-    """
+    """Show help."""
     print('--- Usage ---')
     print('\tpython3 backup.py [--add] [--backup [alias1, alias2]]')
     print()
@@ -134,11 +127,20 @@ def show_help():
     print('\t--backup: Start the backup (optionally followed by aliases to be backed up exclusively)')
 
 
+def init_logger():
+    # Load logger config
+    with open(os.path.join('config', 'logger.yaml'), 'r') as f:
+        logger_config = yaml.safe_load(f.read())
+        logging.config.dictConfig(logger_config)
+
+    return logging.getLogger('main')
+
+
 if __name__ == '__main__':
     args = parse_args()
 
     # Initialize Logger
-    logger = Logger('main')
+    logger = init_logger()
 
     # Count warnings and errors
     warnings = 0
@@ -186,7 +188,7 @@ if __name__ == '__main__':
         shutil.rmtree(tmp_path)
 
     # Mail log
-    if config.get('general.mail_user') and config.get('general.mail_pass') and os.path.exists(Logger.get_path()):
+    if config.get('general.mail_user') and config.get('general.mail_pass'):
         mail_body = format_mail_body(warnings, errors)
         mail.send_gmail(config.get('general.mail_user'), config.get('general.mail_pass'),
-                        [config.get('general.mail_user')], 'Backup My Accounts', mail_body, [Logger.get_path()])
+                        [config.get('general.mail_user')], 'Backup My Accounts', mail_body)

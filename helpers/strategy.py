@@ -3,10 +3,14 @@
 import os
 import json
 import traceback
+import logging
+import logging.config
+import yaml
 
 from helpers import util
+from helpers.log_counter_handler import LogCounterHandler
 from helpers.config import ConfigHelper
-from helpers.log import Logger
+
 
 class Strategy:
     """Super class for all strategies to provide common basic functionalities."""
@@ -20,11 +24,29 @@ class Strategy:
     common_fields = ['backup_path', 'type']
 
     def __init__(self):
-        self.logger = Logger()
+        self.msg_counter_handler = LogCounterHandler()
+
+        self.logger = self.init_logger()
+
+    def init_logger(self, alias=None):
+        """Initialize the logger.
+
+        @param string alias (optional)
+        """
+        alias = alias or self.__class__.__name__
+
+        # Load logger config
+        with open(os.path.join('config', 'logger.yaml'), 'r') as f:
+            config = yaml.safe_load(f.read())
+            logging.config.dictConfig(config)
+
+        logger = logging.getLogger(alias)
+        logger.addHandler(self.msg_counter_handler)
+
+        return logger
 
     def set_logger(self, logger):
-        """
-        Explicitly set logger (used for multipart).
+        """Explicitly set logger (used for multipart).
 
         @param Logger logger
         @return self For chaining
@@ -33,15 +55,26 @@ class Strategy:
 
         return self
 
+    def get_error_count(self):
+        """Get error count from logger handler."""
+        if 'ERROR' in self.msg_counter_handler.level_to_count:
+            return self.msg_counter_handler.level_to_count['ERROR']
+        else:
+            return 0
+
+    def get_warning_count(self):
+        """Get warnings count from logger handler."""
+        if 'WARN' in self.msg_counter_handler.level_to_count:
+            return self.msg_counter_handler.level_to_count['WARN']
+        else:
+            return 0
+
     def add(self, override={}):
-        """
-        Use strategy schema to provice default add prompts.
+        """Use strategy schema to provice default add prompts.
 
         @param dict override
         @return string
         """
-        self.logger.set_source('adding')
-
         alias = override['alias'] if 'alias' in override else input('Alias: ')
 
         self.config = ConfigHelper()
@@ -61,8 +94,10 @@ class Strategy:
 
             if 'alias' not in override:
                 # Set backup path
-                backup_path_default = os.path.join(util.get_project_path(), 'backups', alias)
-                backup_path = input('Backup path [{}]: '.format(backup_path_default)) or backup_path_default
+                backup_path_default = os.path.join(
+                    util.get_project_path(), 'backups', alias)
+                backup_path = input('Backup path [{}]: '.format(
+                    backup_path_default)) or backup_path_default
                 self.config.set('backup_path', backup_path)
 
                 # Set type
@@ -113,15 +148,15 @@ class Strategy:
             traceback.print_exc()
 
     def backup(self, alias, multipart=False):
-        """
-        Set up proper backup environment.
+        """Set up proper backup environment.
 
         @param string alias
         @param boolean multipart (optional)
         @return dict
         """
         try:
-            self.logger.set_source(alias)
+            # self.logger.set_source(alias)
+            self.logger = self.init_logger(alias)
 
             if not multipart:
                 self.logger.info('Starting...')
@@ -144,7 +179,8 @@ class Strategy:
 
             # Determine backup path
             if multipart or (self.config.exists('versions') and self.config.get('versions') > 1 and not self.config.get('archive')):
-                self.backup_path = os.path.join(self.config.get('backup_path'), self.alias + '_' + util.startup_time)
+                self.backup_path = os.path.join(self.config.get(
+                    'backup_path'), self.alias + '_' + util.startup_time)
             else:
                 self.backup_path = self.config.get('backup_path')
 
@@ -163,33 +199,29 @@ class Strategy:
             traceback.print_exc()
 
         return {
-            'errors': self.logger.count_errors(),
-            'warnings': self.logger.count_warnings()
+            'errors': self.get_error_count(),
+            'warnings': self.get_warning_count()
         }
 
     def start_backup(self):
-        """
-        Placeholder for method only to be called on child classes.
-        """
+        """Placeholder for method only to be called on child classes."""
         raise NotImplementedError("Must override start_backup")
 
     def teardown(self):
-        """
-        Clean up backup environment.
-        """
+        """Clean up backup environment."""
         if self.multipart:
             return
-        
+
         if self.config.get('versions'):
             # Remove old versions
-            util.cleanup_versions(self.config.get('backup_path'), self.config.get('versions'), self.alias)
+            util.cleanup_versions(self.config.get(
+                'backup_path'), self.config.get('versions'), self.alias)
 
         # Done
         self.logger.info('Done')
 
     def build_default_string(self, param):
-        """
-        Build default value string to be displayed in add prompt.
+        """Build default value string to be displayed in add prompt.
 
         @param string param
         @return string
@@ -206,13 +238,13 @@ class Strategy:
         return ''
 
     def load_schema(self):
-        """
-        Load strategy schema.
+        """Load strategy schema.
 
         @return list
         """
         # Determine config location
-        location = os.path.join(util.get_project_path(), 'config', 'schemas', self.TYPE + '.json')
+        location = os.path.join(util.get_project_path(),
+                                'config', 'schemas', self.TYPE + '.json')
 
         if not os.path.exists(location):
             return []
@@ -221,8 +253,7 @@ class Strategy:
             return json.load(f)
 
     def validate_config(self):
-        """
-        Check config for missing required values.
+        """Check config for missing required values.
 
         @raises Exception
         """
@@ -231,9 +262,11 @@ class Strategy:
 
         # Determine all required fields
         required_fields = self.common_fields +\
-            list(map(lambda x: x['key'], filter(lambda x: 'required' not in x or x['required'], schema)))
+            list(map(lambda x: x['key'], filter(
+                lambda x: 'required' not in x or x['required'], schema)))
 
         # Check if we have all necessary information
         for field in required_fields:
             if self.config.get(field, '') == '':
-                raise Exception('Config corrupted: "{}" is missing'.format(field))
+                raise Exception(
+                    'Config corrupted: "{}" is missing'.format(field))
