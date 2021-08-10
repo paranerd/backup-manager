@@ -2,6 +2,7 @@
 
 from helpers.strategy import Strategy
 from helpers.cache import Cache
+from helpers import util
 import os
 from datetime import datetime
 import re
@@ -11,7 +12,6 @@ from urllib.parse import quote_plus
 import requests
 import urllib3
 
-import traceback
 
 # Prevent SSL certificate errors
 from urllib3.contrib import pyopenssl
@@ -25,12 +25,8 @@ class GoogleDrive(Strategy):
     API_URL = 'https://www.googleapis.com/drive/v3/files'
     cache = None
 
-    def add(self, override={}):
-        """
-        Add Google Drive account.
-
-        @param dict override (optional)
-        """
+    def add(self):
+        """Add Google Drive account."""
         self.alias = super().add()
 
         # Show instructions
@@ -48,17 +44,26 @@ class GoogleDrive(Strategy):
         self.config.set('token', token)
 
     def start_backup(self):
-        """
-        Start backup.
-        """
+        """Start backup."""
         # Set cache
         self.cache = Cache(self.alias)
 
+        # Backup
         self.get_children()
 
+        # Cleanup
+        self.cleanup()
+
+    def cleanup(self):
+        """Delete files that have been removed from Drive."""
+        all_cached = self.cache.get()
+
+        for _, value in all_cached.items():
+            if value['last_seen'] is not util.startup_time:
+                os.remove(value['path'])
+
     def build_auth_uri(self):
-        """
-        Build auth URI for requesting token.
+        """Build auth URI for requesting token.
 
         @return string
         """
@@ -75,8 +80,7 @@ class GoogleDrive(Strategy):
         return auth_uri
 
     def request_code(self):
-        """
-        Request code from auth URI to obtain token.
+        """Request code from auth URI to obtain token.
 
         @return string
         """
@@ -95,8 +99,7 @@ class GoogleDrive(Strategy):
         return input('Enter code: ')
 
     def execute_request(self, url, headers={}, params={}, method='GET', is_retry=False):
-        """
-        Call Drive API.
+        """Call Drive API.
 
         @param string url
         @param dict headers
@@ -137,8 +140,7 @@ class GoogleDrive(Strategy):
         }
 
     def request_token(self, code=''):
-        """
-        Request access token.
+        """Request access token.
 
         @param string code (optional)
         @return dict
@@ -174,9 +176,7 @@ class GoogleDrive(Strategy):
             raise Exception('Error getting token: ' + str(res['body']))
 
     def show_instructions(self):
-        """
-        Print instructions on how to set up Google Cloud Project.
-        """
+        """Print instructions on how to set up Google Cloud Project."""
         print()
         print('If you already have an OAuth-Client-ID, download the JSON')
         print('Otherwise, here\'s how to get credentials:')
@@ -200,8 +200,7 @@ class GoogleDrive(Strategy):
         print()
 
     def check_if_excluded(self, path):
-        """
-        Check if file is to be excluded from download.
+        """Check if file is to be excluded from download.
 
         @param string path
         @return boolean
@@ -213,8 +212,7 @@ class GoogleDrive(Strategy):
         return False
 
     def is_folder(self, item):
-        """
-        Check if item is a Google Folder.
+        """Check if item is a Google Folder.
 
         @param GoogleDriveFile item
         @return boolean
@@ -222,8 +220,7 @@ class GoogleDrive(Strategy):
         return item['mimeType'] == 'application/vnd.google-apps.folder'
 
     def is_google_doc(self, item):
-        """
-        Check if item is a Google Doc.
+        """Check if item is a Google Doc.
 
         @param GoogleDriveFile item
         @return boolean
@@ -231,8 +228,7 @@ class GoogleDrive(Strategy):
         return item['mimeType'] == 'application/vnd.google-apps.document'
 
     def is_google_sheet(self, item):
-        """
-        Check if item is a Google Spreadsheet.
+        """Check if item is a Google Spreadsheet.
 
         @param GoogleDriveFile item
         @return boolean
@@ -240,8 +236,7 @@ class GoogleDrive(Strategy):
         return item['mimeType'] == 'application/vnd.google-apps.spreadsheet'
 
     def is_google_slides(self, item):
-        """
-        Check if item is a Google Slidedeck.
+        """Check if item is a Google Slidedeck.
 
         @param GoogleDriveFile item
         @return boolean
@@ -249,8 +244,7 @@ class GoogleDrive(Strategy):
         return item['mimeType'] == 'application/vnd.google-apps.presentation'
 
     def get_children(self, item_id='root', parents=[], page_token=''):
-        """
-        Traverse Drive recursively and initiates file download.
+        """Traverse Drive recursively and initiate file download.
 
         @param string item_id (optional)
         @param list parents (optional)
@@ -288,13 +282,9 @@ class GoogleDrive(Strategy):
 
             # Excluded or trashed
             if self.check_if_excluded(path_item):
-                self.logger.info(
-                    'Skipping {} because it is excluded'.format(path_item))
                 continue
 
             if item['trashed']:
-                self.logger.info(
-                    'Skipping {} because it is trashed.'.format(path_item))
                 continue
 
             # Folders
@@ -318,6 +308,10 @@ class GoogleDrive(Strategy):
                     item['id'] + '/export?mimeType=application/pdf'
                 filename = item['name'] + '_converted.pdf'
 
+            # Remember last seen in cache
+            self.cache.set(item['id'] + '.last_seen', util.startup_time)
+
+            # Move if moved
             if self.check_if_moved_and_move(item, path, filename):
                 continue
 
@@ -327,9 +321,10 @@ class GoogleDrive(Strategy):
                     self.download(url, path, filename)
 
                     # Add to cache
-                    cache_item = {'modified': item['modifiedTime'],
-                                  'path': os.path.join(path, filename)}
-                    self.cache.set(item['id'], cache_item)
+                    self.cache.set(item['id'] + '.modified',
+                                   item['modifiedTime'])
+                    self.cache.set(item['id'] + '.path',
+                                   os.path.join(path, filename))
                 except Exception as e:
                     self.logger.error(e)
 
@@ -337,8 +332,7 @@ class GoogleDrive(Strategy):
             self.get_children(item_id, parents, res['body']['nextPageToken'])
 
     def check_if_moved_and_move(self, item, path, filename):
-        """
-        Check if source was simply moved and move if so.
+        """Check if source was simply moved and move if so.
         To determine whether the item has moved check the modified time.
         We can't use 'md5Checksum' here, because Google Docs don't have one.
 
@@ -349,11 +343,16 @@ class GoogleDrive(Strategy):
         """
         move_source = self.cache.get(item['id'])
 
-        if move_source:
+        if move_source and 'modified' in move_source:
             move_target = os.path.join(path, filename)
 
             if move_source['modified'] == item['modifiedTime'] \
                     and move_source['path'] != move_target:
+
+                # Create folder if not exists
+                if not os.path.exists(path):
+                    os.makedirs(path)
+
                 self.logger.info('Moving {} to {}'.format(
                     move_source['path'], move_target))
                 os.rename(move_source['path'], move_target)
@@ -365,8 +364,7 @@ class GoogleDrive(Strategy):
         return False
 
     def is_backed_up(self, item, path, filename):
-        """
-        Check if file exists and is newer than on Drive.
+        """Check if file exists and is newer than on Drive.
 
         @param GoogleDriveFile item
         @param string path
@@ -383,8 +381,7 @@ class GoogleDrive(Strategy):
         return False
 
     def download(self, url, path, filename):
-        """
-        Download item.
+        """Download item.
 
         @param string url
         @param string path
