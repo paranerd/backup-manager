@@ -86,7 +86,7 @@ class Server(Strategy):
                 exclude_str = ' '.join(list(map(lambda x: "--exclude '" + x + "'", exclude)))
 
                 # Sync remote to tmp
-                cmd = 'sshpass -p {} rsync -a {} -e ssh {}@{}:{}/ {}/homeassistant'.format(password, exclude_str, user, host, path_from, tmp_path)
+                cmd = 'sshpass -p {} rsync -a {} -e "ssh -o StrictHostKeyChecking=no" {}@{}:{}/ {}/'.format(password, exclude_str, user, host, path_from, tmp_path)
                 subprocess.run([cmd], shell=True, check=True, capture_output=True)
             except subprocess.CalledProcessError as err:
                 self.logger.error('Error pulling backups: {} STDOUT: {})'.format(err.stderr.decode('utf-8'), err.stdout.decode('utf-8')))
