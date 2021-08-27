@@ -10,6 +10,7 @@ Currently supported:
 - MySQL Database
 - WordPress
 - Dropbox
+- PostgreSQL Database
 
 Google and Dropbox will need some minor preparations, see below for details
 
@@ -89,7 +90,7 @@ Backup Manager also works in a Docker environment.
 To add new accounts, run:
 
 ```
-docker run -it -v "/path/to/backups:/app/backups" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager-dev add
+docker run -it -v "/path/to/backups:/app/backups" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager add
 ```
 
 Then follow the adding process.
@@ -99,7 +100,7 @@ You may replace the backup path however you like, just remember to reflect it pr
 ### Running the backup
 Analogous to adding, the backup command is as follows:
 ```
-docker run -it -v "/path/to/backups:/app/backups" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager-dev backup [alias1, alias2]
+docker run -it -v "/path/to/backups:/app/backups" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager backup [alias1, alias2]
 ```
 
 ## How it works
