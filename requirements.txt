@@ -1,2 +1,3 @@
 dropbox
 pyopenssl
+pyyaml
