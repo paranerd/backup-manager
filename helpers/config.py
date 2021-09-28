@@ -2,6 +2,7 @@
 
 import os
 import json
+from pathlib import Path
 
 from . import util
 
@@ -15,7 +16,7 @@ class ConfigHelper:
         @param boolean write_through (optional)
         """
         # Determine config location
-        self.location = location or os.path.join(util.get_project_path(), 'config', 'config.json')
+        self.location = location or Path(util.get_project_path()).joinpath('config', 'config.json')
 
         # Set namespace
         self.namespace = namespace
@@ -40,11 +41,13 @@ class ConfigHelper:
 
         @return dict
         """
-        if os.path.exists(self.location):
+        try:
             # Load config
             with open(self.location, 'r') as fin:
                 return json.load(fin)
-        else:
+        except:
+            Path(self.location).resolve().parent.mkdir(
+                parents=True, exist_ok=True)
             # Return empty config
             return {}
 
