@@ -26,7 +26,7 @@ pip3 install -r requirements.txt
 ## Add accounts
 To add an account to backup run
 ```sh
-$ python3 backup.py --add
+$ python3 main.py --add
 ```
 
 and follow the instructions
@@ -34,7 +34,7 @@ and follow the instructions
 ## Backup accounts
 To start the backup run
 ```sh
-$ python3 backup.py --backup [alias1, alias2]
+$ python3 main.py backup [alias1, alias2]
 ```
 
 If you provide aliases, only those accounts will be backed up.

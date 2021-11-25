@@ -2,7 +2,6 @@
 
 import os
 import sys
-import argparse
 import shutil
 import logging
 import logging.config
@@ -21,6 +20,7 @@ from strategies.postgresql import PostgreSQL
 
 from helpers import util
 from helpers import mail
+from helpers.argumentparser import ArgumentParser
 from helpers.config import ConfigHelper
 
 strategies = [
@@ -57,9 +57,8 @@ def parse_args():
 
     @return dict
     """
-    parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument('--add', action='store_true')
-    parser.add_argument('--backup', action='store_true')
+    parser = ArgumentParser()
+    parser.add_argument('action', type=str, help='Action to perform. Can be one of: add|backup. backup may be followed by aliases to be backed up exclusively.')
     arguments, _ = parser.parse_known_args()
 
     return arguments
@@ -117,21 +116,10 @@ def show_add_menu():
         print(err)
 
 
-def show_help():
-    """Show help."""
-    print('--- Usage ---')
-    print('\tpython3 backup.py [--add] [--backup [alias1, alias2]]')
-    print()
-    print('Arguments:')
-    print('\t--add: Add a new account to backup')
-    print('\t--backup: Start the backup (optionally followed by aliases to be backed up exclusively)')
-
-
 def init_logger():
     """Create log folder and load logger config."""
     # Create log folder
     if not os.path.exists('log'):
-        print('Creating log folder')
         os.mkdir('log')
 
     # Load logger config
@@ -157,9 +145,9 @@ if __name__ == '__main__':
         configure_mail()
 
     # If add
-    if args.add:
+    if args.action == 'add':
         show_add_menu()
-    elif args.backup:
+    elif args.action == 'backup':
         aliases = sys.argv[2:] if len(
             sys.argv) > 2 else list(config.config.keys())
 
@@ -184,8 +172,7 @@ if __name__ == '__main__':
                 warnings += int(res['warnings'])
                 errors += int(res['errors'])
     else:
-        show_help()
-        sys.exit(1)
+        sys.exit(2)
 
     # Clean up
     tmp_path = util.get_tmp_path()
