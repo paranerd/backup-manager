@@ -70,11 +70,14 @@ def configure_mail():
 
     if mail_user:
         mail_pass = input('Mail password: ')
+        failure_only = input('Send on failure only [Yn]: ').lower() == 'y'
     else:
         mail_pass = ''
+        failure_only = True
 
-    config.set('general.mail_user', mail_user)
-    config.set('general.mail_pass', mail_pass)
+    config.set('general.mail.user', mail_user)
+    config.set('general.mail.pass', mail_pass)
+    config.set('general.mail.failure_only', failure_only)
 
 
 def format_mail_body(warnings, errors):
@@ -141,7 +144,7 @@ if __name__ == '__main__':
     errors = 0
 
     # Configure mail if necessary
-    if not config.exists('general.mail_user'):
+    if not config.exists('general.mail.user'):
         configure_mail()
 
     # If add
@@ -181,7 +184,7 @@ if __name__ == '__main__':
         shutil.rmtree(tmp_path)
 
     # Mail log
-    if config.get('general.mail_user') and config.get('general.mail_pass'):
+    if config.get('general.mail.user') and config.get('general.mail.pass') and (warnings > 0 or errors > 0 or not config.get('general.mail.failure_only')):
         mail_body = format_mail_body(warnings, errors)
-        mail.send_gmail(config.get('general.mail_user'), config.get('general.mail_pass'),
-                        [config.get('general.mail_user')], 'Backup My Accounts', mail_body)
+        mail.send_gmail(config.get('general.mail.user'), config.get('general.mail.pass'),
+                        [config.get('general.mail.user')], 'Backup My Accounts', mail_body)
