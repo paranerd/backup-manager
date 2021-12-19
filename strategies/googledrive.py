@@ -11,6 +11,7 @@ import webbrowser
 from urllib.parse import quote_plus
 import requests
 import urllib3
+from pathlib import Path
 
 
 # Prevent SSL certificate errors
@@ -58,9 +59,13 @@ class GoogleDrive(Strategy):
         """Delete files that have been removed from Drive."""
         all_cached = self.cache.get()
 
-        for _, value in all_cached.items():
-            if value['last_seen'] is not util.startup_time:
-                os.remove(value['path'])
+        for id, item in list(all_cached.items()):
+            if item['last_seen'] is not util.startup_time and 'path' in item:
+                # Delete file
+                Path(item['path']).unlink(missing_ok=True)
+
+                # Remove item from cache
+                self.cache.delete(id)
 
     def build_auth_uri(self):
         """Build auth URI for requesting token.
