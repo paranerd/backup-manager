@@ -90,7 +90,7 @@ Backup Manager also works in a Docker environment.
 To add new accounts, run:
 
 ```
-docker run --rm -it -v "/path/to/backups:/app/backups" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager add
+docker run --rm -it -v "/path/to/backups:/app/backups" -v "/path/to/log:/app/log" -v "/path/to/config/config.json:/app/config/config.json" paranerd/backup-manager add
 ```
 
 Then follow the adding process.
